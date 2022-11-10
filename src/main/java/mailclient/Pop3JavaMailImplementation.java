@@ -6,6 +6,8 @@
 
 package mailclient;
 
+import com.sun.mail.util.MailConnectException;
+
 import javax.mail.*;
 import java.io.IOException;
 import java.util.Properties;
@@ -14,6 +16,7 @@ public class Pop3JavaMailImplementation implements Pop3Client {
     private Properties mailProperties;
     Session emailSession;
     Store emailStore;
+    private boolean loggedIn = false;
     private Message[] mails;
 
     @Override
@@ -51,9 +54,20 @@ public class Pop3JavaMailImplementation implements Pop3Client {
     public void closeConnection() {
         try {
             emailStore.close();
+            loggedIn = false;
         } catch (MessagingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public boolean isLoggedIn() {
+        return loggedIn;
+    }
+
+    @Override
+    public boolean connectionIsReadyToUse() {
+        return emailStore.isConnected() && isLoggedIn();
     }
 
     public Pop3JavaMailImplementation(String host, String username, String password, boolean encryptedConnection) {
@@ -74,10 +88,11 @@ public class Pop3JavaMailImplementation implements Pop3Client {
         try {
             emailStore = emailSession.getStore("pop3s");
             emailStore.connect(mailProperties.getProperty("mail.pop3.host"), mailProperties.getProperty("username"), mailProperties.getProperty("password"));
+            loggedIn = true;
         } catch (AuthenticationFailedException e) {
             System.out.println("Invalid username/password.");
-        } catch (NoSuchProviderException e) {
-            throw new RuntimeException(e);
+        } catch (NoSuchProviderException | MailConnectException e) {
+            System.out.println("Couldn't connect to host: " + e);
         } catch (MessagingException e) {
             throw new RuntimeException(e);
         }

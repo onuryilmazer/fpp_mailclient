@@ -8,6 +8,17 @@ public class CommandLineInterface {
         int connectionMethod = showMenuDialog("Connection method",
                 new String[]{"Websockets", "JavaMail API"});
 
+        int serverChoice = showMenuDialog("Mail server",
+                new String[]{"pop3.uni-jena.de", "Enter a new URL."});
+
+        String serverURL;
+        if (serverChoice == 0) {
+            serverURL = "pop3.uni-jena.de";
+        }
+        else {
+            serverURL = getStringFromUser("Server address");
+        }
+
         int credentials = showMenuDialog("User credentials",
                 new String[]{"Read the values from the environment variables MAIL_USERNAME, MAIL_PASSWORD.", "Enter a new username and password."});
 
@@ -21,18 +32,6 @@ public class CommandLineInterface {
             password = getStringFromUser("Password");
         }
 
-        int serverChoice = showMenuDialog("Mail server",
-                new String[]{"pop3.uni-jena.de", "Enter a new URL."});
-
-        String serverURL;
-        if (serverChoice == 0) {
-            serverURL = "pop3.uni-jena.de";
-        }
-        else {
-            serverURL = getStringFromUser("Server address");
-        }
-
-
         Pop3Client myClient;
         if (connectionMethod == 0) {
             myClient = new Pop3WebSocketsImplementation(serverURL, username, password);
@@ -42,8 +41,7 @@ public class CommandLineInterface {
         }
 
 
-        boolean stayInLoop = true;
-        while (stayInLoop) {
+        while (myClient.connectionIsReadyToUse()) {
             int command = showMenuDialog("Pick a command",
                     new String[]{"Show the number of mails", "List all mails", "Read a mail", "End connection"});
 
@@ -63,11 +61,9 @@ public class CommandLineInterface {
 
                 case 3:
                     myClient.closeConnection();
-                    stayInLoop = false;
                     break;
 
                 default:
-                    stayInLoop = false;
                     break;
             }
         }

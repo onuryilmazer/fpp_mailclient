@@ -8,4 +8,8 @@ public interface Pop3Client {
     public void getNumberOfMails();
 
     public void closeConnection();
+
+    public boolean isLoggedIn();
+
+    public boolean connectionIsReadyToUse();
 }

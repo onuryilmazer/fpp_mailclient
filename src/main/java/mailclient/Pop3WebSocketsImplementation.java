@@ -16,6 +16,7 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
     private String username;
     private String password;
     private Socket connection;
+    private boolean loggedIn = false;
     private static final String CRLF = "\r\n";  //Line termination character: carriage return line feed pair. Source: POP3 Specification.
 
     @Override
@@ -36,6 +37,27 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
     @Override
     public void closeConnection() {
         quit();
+        loggedIn = false;
+    }
+
+    @Override
+    public boolean isLoggedIn() {
+        return loggedIn;
+    }
+
+    @Override
+    public boolean connectionIsReadyToUse() {
+        if (!isLoggedIn()) {
+            return false;
+        }
+        else {
+            writeToSocket("NOOP");
+            if (isLoggedIn() && readSocket(false).statusIndicator == ServerResponse.STATUS.OK) {
+                return true;
+            } else {
+                return false;
+            }
+        }
     }
 
 
@@ -69,6 +91,13 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
     private void quit() {
         writeToSocket("QUIT");
         System.out.println("Response: " + readSocket(false));
+        try {
+            connection.close();
+        }
+        catch (IOException e) {
+
+        }
+
     }
 
     private void establishConnection() {
@@ -88,12 +117,15 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
                 if (readSocket(false).statusIndicator != ServerResponse.STATUS.OK) {
                     System.out.println("Error: Username and/or password was not accepted by the server.");
                 }
+                else {
+                    loggedIn = true;
+                }
             }
             catch (UnknownHostException e) {
-                System.out.println("Error: Hostname couldn't be resolved. " + e.getMessage());
+                System.out.println("Error: Hostname couldn't be resolved: " + e.getMessage());
             }
             catch (IOException e) {
-                System.out.println("Error: IOException. " + e.getMessage());
+                System.out.println("Error: IOException: " + e.getMessage());
             }
         }
     }
