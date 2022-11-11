@@ -7,6 +7,8 @@
 
 package mailclient;
 
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 import java.io.*;
 import java.net.*;
 
@@ -16,6 +18,7 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
     private String username;
     private String password;
     private Socket connection;
+    boolean encryptedConnection;
     private boolean loggedIn = false;
     private static final String CRLF = "\r\n";  //Line termination character: carriage return line feed pair. Source: POP3 Specification.
 
@@ -61,11 +64,12 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
     }
 
 
-    public Pop3WebSocketsImplementation(String host, String username, String password) {
+    public Pop3WebSocketsImplementation(String host, int port, boolean encryptedConnection, String username, String password) {
         this.serverAddress = host;
-        this.serverPort = 110;
+        this.serverPort = port;
         this.username = username;
         this.password = password;
+        this.encryptedConnection = encryptedConnection;
 
         establishConnection();
     }
@@ -103,7 +107,15 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
     private void establishConnection() {
         if (connection == null || connection.isClosed()) {
             try {
-                connection = new Socket(serverAddress, serverPort);
+                if (encryptedConnection) {
+                    SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+                    connection = (SSLSocket) sslsocketfactory.createSocket(serverAddress, serverPort);
+                }
+                else {
+                    connection = new Socket(serverAddress, serverPort);
+                }
+
+
                 if (readSocket(false).statusIndicator != ServerResponse.STATUS.OK) {
                     System.out.println("Error: Couldn't connect to the server");
                 }

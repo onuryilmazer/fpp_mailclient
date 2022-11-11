@@ -70,13 +70,11 @@ public class Pop3JavaMailImplementation implements Pop3Client {
         return emailStore.isConnected() && isLoggedIn();
     }
 
-    public Pop3JavaMailImplementation(String host, String username, String password, boolean encryptedConnection) {
-        //TODO: add the option for unencrypted connection.
-
+    public Pop3JavaMailImplementation(String host, int port, String username, String password, boolean encryptedConnection) {
         mailProperties = new Properties();
         mailProperties.put("mail.pop3.host", host);
-        mailProperties.put("mail.pop3.port", "995");
-        mailProperties.put("mail.pop3.starttls.enable", "true");
+        mailProperties.put("mail.pop3.port", String.valueOf(port));
+        mailProperties.put("mail.pop3.starttls.enable", (encryptedConnection ? "true" : "false"));
         mailProperties.put("username", username);
         mailProperties.put("password", password);
 

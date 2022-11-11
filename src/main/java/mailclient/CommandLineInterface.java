@@ -9,15 +9,50 @@ public class CommandLineInterface {
                 new String[]{"Websockets", "JavaMail API"});
 
         int serverChoice = showMenuDialog("Mail server",
-                new String[]{"pop3.uni-jena.de", "Enter a new URL."});
+                new String[]{"pop3.uni-jena.de", "pop.gmx.net (only encrypted connection possible)", "Enter a new URL."});
 
         String serverURL;
+        boolean onlyEncryptedConnectionAllowed = false;
+        int insecurePort=110;
+        int securePort=995;
+
         if (serverChoice == 0) {
             serverURL = "pop3.uni-jena.de";
+            onlyEncryptedConnectionAllowed = false;
+            insecurePort = 110;
+            securePort = 995;
+        }
+
+        else if (serverChoice == 1) {
+            serverURL = "pop.gmx.net";
+            onlyEncryptedConnectionAllowed = true;
+            securePort = 995;
         }
         else {
             serverURL = getStringFromUser("Server address");
+            System.out.println("Does your server support insecure connections as well?");
+            int choice = showMenuDialog("Does your server support insecure connections as well?", new String[]{"Yes", "No"});
+            onlyEncryptedConnectionAllowed = (choice == 0 ? false : true);
+
+            securePort = getIntegerFromUser("Port for secure connections: ");
+
+            if (!onlyEncryptedConnectionAllowed) {
+                insecurePort = getIntegerFromUser("Port for insecure connections (): ");
+            }
         }
+
+
+        boolean connectEncrypted = true;
+        if (!onlyEncryptedConnectionAllowed) {
+            int encryptedConnection = showMenuDialog("Encryption", new String[]{"Yes", "No"});
+            if (encryptedConnection == 0) {
+                connectEncrypted = true;
+            }
+            else {
+                connectEncrypted = false;
+            }
+        }
+
 
         int credentials = showMenuDialog("User credentials",
                 new String[]{"Read the values from the environment variables MAIL_USERNAME, MAIL_PASSWORD.", "Enter a new username and password."});
@@ -34,10 +69,21 @@ public class CommandLineInterface {
 
         Pop3Client myClient;
         if (connectionMethod == 0) {
-            myClient = new Pop3WebSocketsImplementation(serverURL, username, password);
+            if (connectEncrypted) {
+                myClient = new Pop3WebSocketsImplementation(serverURL, securePort, true, username, password);
+            }
+            else {
+                myClient = new Pop3WebSocketsImplementation(serverURL, insecurePort, false, username, password);
+            }
+
         }
         else {
-            myClient = new Pop3JavaMailImplementation(serverURL, username, password, true);
+            if (connectEncrypted) {
+                myClient = new Pop3JavaMailImplementation(serverURL, securePort, username, password, true);
+            }
+            else {
+                myClient = new Pop3JavaMailImplementation(serverURL, insecurePort, username, password, false);
+            }
         }
 
 
@@ -55,8 +101,7 @@ public class CommandLineInterface {
                     break;
 
                 case 2:
-                    System.out.println("Enter the mail number:");
-                    myClient.showMail(getIntegerFromUser());
+                    myClient.showMail(getIntegerFromUser("Enter the mail number"));
                     break;
 
                 case 3:
@@ -106,7 +151,8 @@ public class CommandLineInterface {
         return userInput;
     }
 
-    private static int getIntegerFromUser() {
+    private static int getIntegerFromUser(String prompt) {
+        System.out.println(prompt + ": ");
         Scanner consoleReader = new Scanner(System.in);
         int userInput;
 
