@@ -18,7 +18,7 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
     private String username;
     private String password;
     private Socket connection;
-    boolean encryptedConnection;
+    private boolean encryptedConnection;
     private boolean loggedIn = false;
     private static final String CRLF = "\r\n";  //Line termination character: carriage return line feed pair. Source: POP3 Specification.
 
@@ -55,7 +55,7 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
         }
         else {
             writeToSocket("NOOP");
-            if (isLoggedIn() && readSocket(false).statusIndicator == ServerResponse.STATUS.OK) {
+            if (readSocket(false).statusIndicator == ServerResponse.STATUS.OK) {
                 return true;
             } else {
                 return false;
@@ -63,14 +63,12 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
         }
     }
 
-
     public Pop3WebSocketsImplementation(String host, int port, boolean encryptedConnection, String username, String password) {
         this.serverAddress = host;
         this.serverPort = port;
+        this.encryptedConnection = encryptedConnection;
         this.username = username;
         this.password = password;
-        this.encryptedConnection = encryptedConnection;
-
         establishConnection();
     }
 
@@ -115,7 +113,6 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
                     connection = new Socket(serverAddress, serverPort);
                 }
 
-
                 if (readSocket(false).statusIndicator != ServerResponse.STATUS.OK) {
                     System.out.println("Error: Couldn't connect to the server");
                 }
@@ -144,11 +141,11 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
 
     private ServerResponse readSocket(boolean multiline) {
         try {
-            Reader pop3reader = new InputStreamReader(connection.getInputStream());
+            Reader pop3Reader = new InputStreamReader(connection.getInputStream());
             StringBuilder response = new StringBuilder();
 
             while (true) {
-                response.append((char) pop3reader.read());
+                response.append((char) pop3Reader.read());
                 if (!multiline && response.length() > 2 && response.substring(response.length()-2).equals("\r\n")) { break; }
                 else if (multiline && response.length() > 5 && response.substring(response.length()-5).equals("\r\n.\r\n")) { break; }
             }
@@ -163,9 +160,9 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
 
     private void writeToSocket(String message) {
         try {
-            Writer pop3writer = new OutputStreamWriter(connection.getOutputStream());
-            pop3writer.write(message + CRLF);
-            pop3writer.flush();
+            Writer pop3Writer = new OutputStreamWriter(connection.getOutputStream());
+            pop3Writer.write(message + CRLF);
+            pop3Writer.flush();
         }
         catch (IOException e) {
             System.out.println("An I/O error occurred. The connection might have timed out. " + e.getMessage());

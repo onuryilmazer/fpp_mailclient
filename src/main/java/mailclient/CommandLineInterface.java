@@ -5,54 +5,41 @@ import java.util.*;
 public class CommandLineInterface {
     public static void main(String[] args) {
 
+        MailServer[] servers = {new MailServer("pop3.uni-jena.de", 110, 995, "smtp.uni-jena.de", 25, 587, true, "uni.jena.de (POP3 & SMTP)"),
+                                    new MailServer("pop.gmx.net", -1, 995, "mail.gmx.net", -1, 587,false, "gmx.net (POP3 & SMTP)")};
+
         int connectionMethod = showMenuDialog("Connection method",
                 new String[]{"Websockets", "JavaMail API"});
 
-        int serverChoice = showMenuDialog("Mail server",
-                new String[]{"pop3.uni-jena.de", "pop.gmx.net (only encrypted connection possible)", "Enter a new URL."});
+        for (int i = 0; i < servers.length; i++) { System.out.println(i + ": " + servers[i].getDescription()); }
+        int serverChoice = getIntegerFromUser("Mail server (enter -1 to pick a custom server): ");
 
-        String serverURL;
-        boolean onlyEncryptedConnectionAllowed = false;
-        int insecurePort=110;
-        int securePort=995;
-
-        if (serverChoice == 0) {
-            serverURL = "pop3.uni-jena.de";
-            onlyEncryptedConnectionAllowed = false;
-            insecurePort = 110;
-            securePort = 995;
+        while (serverChoice < -1 || serverChoice >= servers.length) {
+            System.out.println("Invalid choice, try again.");
+            serverChoice = getIntegerFromUser("Mail server (-1 to enter a new server): ");
         }
 
-        else if (serverChoice == 1) {
-            serverURL = "pop.gmx.net";
-            onlyEncryptedConnectionAllowed = true;
-            securePort = 995;
+        MailServer myServer;
+        if (serverChoice == -1) {
+            String description = getStringFromUser("Server name: ");
+            boolean insecureConnectionsAllowed = showMenuDialog("Does your server support insecure connections?", new String[]{"Yes", "No"}) == 0;
+            String pop3URL = getStringFromUser("Server POP3 address: ");
+            int securePop3Port = getIntegerFromUser("Port for secure POP3 connections: ");
+            int insecurePop3Port = insecureConnectionsAllowed ? getIntegerFromUser("Port for insecure POP3 connections: ") : -1;
+            String smtpURL = getStringFromUser("Server SMTP address: ");
+            int secureSmtpPort = getIntegerFromUser("Port for secure SMTP connections: ");
+            int insecureSmtpPort = insecureConnectionsAllowed ? getIntegerFromUser("Port for insecure SMTP connections: ") : -1;
+
+            myServer = new MailServer(pop3URL, insecurePop3Port, securePop3Port, smtpURL, secureSmtpPort, insecureSmtpPort, insecureConnectionsAllowed, description);
         }
         else {
-            serverURL = getStringFromUser("Server address");
-            System.out.println("Does your server support insecure connections as well?");
-            int choice = showMenuDialog("Does your server support insecure connections as well?", new String[]{"Yes", "No"});
-            onlyEncryptedConnectionAllowed = (choice == 0 ? false : true);
-
-            securePort = getIntegerFromUser("Port for secure connections: ");
-
-            if (!onlyEncryptedConnectionAllowed) {
-                insecurePort = getIntegerFromUser("Port for insecure connections (): ");
-            }
+            myServer = servers[serverChoice];
         }
-
 
         boolean connectEncrypted = true;
-        if (!onlyEncryptedConnectionAllowed) {
-            int encryptedConnection = showMenuDialog("Encryption", new String[]{"Yes", "No"});
-            if (encryptedConnection == 0) {
-                connectEncrypted = true;
-            }
-            else {
-                connectEncrypted = false;
-            }
+        if (myServer.insecureConnectionsAllowed()) {
+            connectEncrypted = showMenuDialog("Encryption", new String[]{"Yes", "No"}) == 0;
         }
-
 
         int credentials = showMenuDialog("User credentials",
                 new String[]{"Read the values from the environment variables MAIL_USERNAME, MAIL_PASSWORD.", "Enter a new username and password."});
@@ -67,45 +54,54 @@ public class CommandLineInterface {
             password = getStringFromUser("Password");
         }
 
-        Pop3Client myClient;
-        if (connectionMethod == 0) {
-            if (connectEncrypted) {
-                myClient = new Pop3WebSocketsImplementation(serverURL, securePort, true, username, password);
-            }
-            else {
-                myClient = new Pop3WebSocketsImplementation(serverURL, insecurePort, false, username, password);
-            }
+        Pop3Client myClientReader;
+        SmtpClient myClientSender;
 
+        if (connectionMethod == 0) {
+            myClientReader = new Pop3WebSocketsImplementation(myServer.getPop3Address(), myServer.getPop3Port(connectEncrypted), connectEncrypted, username, password);
+            myClientSender = new SmtpClientWebSocketsImplementation(myServer.getSmtpAddress(), myServer.getSmtpPort(connectEncrypted), connectEncrypted, username, password);
         }
         else {
-            if (connectEncrypted) {
-                myClient = new Pop3JavaMailImplementation(serverURL, securePort, username, password, true);
-            }
-            else {
-                myClient = new Pop3JavaMailImplementation(serverURL, insecurePort, username, password, false);
-            }
+            myClientReader = new Pop3JavaMailImplementation(myServer.getPop3Address(), myServer.getPop3Port(connectEncrypted), connectEncrypted, username, password);
+            myClientSender = null;
+            //TODO: JavaMail smtp
         }
 
 
-        while (myClient.connectionIsReadyToUse()) {
+        while (myClientReader.connectionIsReadyToUse()) {
             int command = showMenuDialog("Pick a command",
-                    new String[]{"Show the number of mails", "List all mails", "Read a mail", "End connection"});
+                    new String[]{"Show the number of mails", "List all mails", "Read a mail", "Send a mail", "End connection"});
 
             switch (command) {
                 case 0:
-                    myClient.getNumberOfMails();
+                    myClientReader.getNumberOfMails();
                     break;
 
                 case 1:
-                    myClient.listMails();
+                    myClientReader.listMails();
                     break;
 
                 case 2:
-                    myClient.showMail(getIntegerFromUser("Enter the mail number"));
+                    myClientReader.showMail(getIntegerFromUser("Enter the mail number"));
+                    break;
+                case 3:
+                    String sender = getStringFromUser("Sender address: ");
+                    List<String> receivers = new LinkedList<>();
+
+                    while (true) {
+                        String receiver = getStringFromUser("Receiver addresses (enter a single dot (.) after the last receiver): ");
+                        if (receiver.equals(".")) {break;}
+                        else {receivers.add(receiver);}
+                    }
+
+                    String subject = getStringFromUser("Mail subject: ");
+                    String mailBody = getStringFromUser("Your message: ");
+
+                    myClientSender.sendMail(sender, receivers.toArray(new String[receivers.size()]), subject, mailBody);
                     break;
 
-                case 3:
-                    myClient.closeConnection();
+                case 4:
+                    myClientReader.closeConnection();
                     break;
 
                 default:

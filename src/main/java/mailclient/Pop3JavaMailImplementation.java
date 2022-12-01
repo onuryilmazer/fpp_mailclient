@@ -70,7 +70,7 @@ public class Pop3JavaMailImplementation implements Pop3Client {
         return emailStore.isConnected() && isLoggedIn();
     }
 
-    public Pop3JavaMailImplementation(String host, int port, String username, String password, boolean encryptedConnection) {
+    public Pop3JavaMailImplementation(String host, int port, boolean encryptedConnection, String username, String password) {
         mailProperties = new Properties();
         mailProperties.put("mail.pop3.host", host);
         mailProperties.put("mail.pop3.port", String.valueOf(port));

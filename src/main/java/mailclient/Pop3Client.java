@@ -1,15 +1,15 @@
 package mailclient;
 
 public interface Pop3Client {
-    public void listMails();
+    void listMails();
 
-    public void showMail(int mailNumber);
+    void showMail(int mailNumber);
 
-    public void getNumberOfMails();
+    void getNumberOfMails();
 
-    public void closeConnection();
+    void closeConnection();
 
-    public boolean isLoggedIn();
+    boolean isLoggedIn();
 
-    public boolean connectionIsReadyToUse();
+    boolean connectionIsReadyToUse();
 }
