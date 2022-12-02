@@ -7,7 +7,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Base64;
 
-public class SmtpClientWebSocketsImplementation implements SmtpClient {
+public class SmtpWebSocketsImplementation implements SmtpClient {
     private String serverAddress;
     private int serverPort;
     private String username;
@@ -17,7 +17,7 @@ public class SmtpClientWebSocketsImplementation implements SmtpClient {
     private boolean loggedIn = false;
     private static final String CRLF = "\r\n";  //Line termination character.
 
-    public SmtpClientWebSocketsImplementation(String serverAddress, int serverPort, boolean encryptedConnection, String username, String password) {
+    public SmtpWebSocketsImplementation(String serverAddress, int serverPort, boolean encryptedConnection, String username, String password) {
         this.serverAddress = serverAddress;
         this.serverPort = serverPort;
         this.username = username;
@@ -27,7 +27,7 @@ public class SmtpClientWebSocketsImplementation implements SmtpClient {
     }
 
     @Override
-    public void sendMail(String sender, String[] recipients, String subject, String message) {
+    public void sendMail(String sender, String[] recipients, String subject, String mailBody) {
         if (!connectionIsReadyToUse()) {
             System.out.println("Error: connection is not ready to use. Can't send mail.");
         }
@@ -43,7 +43,7 @@ public class SmtpClientWebSocketsImplementation implements SmtpClient {
         writeToSocket("DATA");
         System.out.println(readSocket().toString());
         writeToSocket("Subject: " + subject);
-        writeToSocket(message);
+        writeToSocket(mailBody);
         writeToSocket(CRLF + "." + CRLF);
         System.out.println(readSocket().toString());
     }

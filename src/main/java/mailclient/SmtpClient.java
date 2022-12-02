@@ -1,7 +1,7 @@
 package mailclient;
 
 public interface SmtpClient {
-    void sendMail(String sender, String[] recipients, String subject, String message);
+    void sendMail(String sender, String[] recipients, String subject, String mailBody);
 
     void endConnection();
 

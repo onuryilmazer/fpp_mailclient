@@ -59,12 +59,11 @@ public class CommandLineInterface {
 
         if (connectionMethod == 0) {
             myClientReader = new Pop3WebSocketsImplementation(myServer.getPop3Address(), myServer.getPop3Port(connectEncrypted), connectEncrypted, username, password);
-            myClientSender = new SmtpClientWebSocketsImplementation(myServer.getSmtpAddress(), myServer.getSmtpPort(connectEncrypted), connectEncrypted, username, password);
+            myClientSender = new SmtpWebSocketsImplementation(myServer.getSmtpAddress(), myServer.getSmtpPort(connectEncrypted), connectEncrypted, username, password);
         }
         else {
             myClientReader = new Pop3JavaMailImplementation(myServer.getPop3Address(), myServer.getPop3Port(connectEncrypted), connectEncrypted, username, password);
-            myClientSender = null;
-            //TODO: JavaMail smtp
+            myClientSender = new SmtpJavaMailImplementation(myServer.getSmtpAddress(), myServer.getSmtpPort(connectEncrypted), connectEncrypted, username, password);
         }
 
 
