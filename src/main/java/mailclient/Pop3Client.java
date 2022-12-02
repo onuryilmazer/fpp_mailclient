@@ -12,4 +12,6 @@ public interface Pop3Client {
     boolean isLoggedIn();
 
     boolean connectionIsReadyToUse();
+
+    void reconnect(int retryCount);
 }

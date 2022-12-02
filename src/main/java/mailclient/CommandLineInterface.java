@@ -16,7 +16,7 @@ public class CommandLineInterface {
 
         while (serverChoice < -1 || serverChoice >= servers.length) {
             System.out.println("Invalid choice, try again.");
-            serverChoice = getIntegerFromUser("Mail server (-1 to enter a new server): ");
+            serverChoice = getIntegerFromUser("Mail server (enter -1 to pick a custom server): ");
         }
 
         MailServer myServer;
@@ -68,7 +68,7 @@ public class CommandLineInterface {
         }
 
 
-        while (myClientReader.connectionIsReadyToUse()) {
+        while (myClientReader.connectionIsReadyToUse() && myClientSender.connectionIsReadyToUse()) {
             int command = showMenuDialog("Pick a command",
                     new String[]{"Show the number of mails", "List all mails", "Read a mail", "Send a mail", "End connection"});
 
@@ -94,8 +94,8 @@ public class CommandLineInterface {
                         else {receivers.add(receiver);}
                     }
 
-                    String subject = getStringFromUser("Mail subject: ");
-                    String mailBody = getStringFromUser("Your message: ");
+                    String subject = getStringLineFromUser("Mail subject: ");
+                    String mailBody = getStringLineFromUser("Your message: ");
 
                     myClientSender.sendMail(sender, receivers.toArray(new String[receivers.size()]), subject, mailBody);
                     break;
@@ -143,6 +143,14 @@ public class CommandLineInterface {
         System.out.println(prompt + ": ");
         Scanner consoleReader = new Scanner(System.in);
         String userInput = consoleReader.next();
+
+        return userInput;
+    }
+
+    private static String getStringLineFromUser(String prompt) {
+        System.out.println(prompt + ": ");
+        Scanner consoleReader = new Scanner(System.in);
+        String userInput = consoleReader.nextLine();
 
         return userInput;
     }

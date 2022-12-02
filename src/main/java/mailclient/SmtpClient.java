@@ -6,4 +6,6 @@ public interface SmtpClient {
     void endConnection();
 
     boolean connectionIsReadyToUse();
+
+    void reconnect(int retryCount);
 }

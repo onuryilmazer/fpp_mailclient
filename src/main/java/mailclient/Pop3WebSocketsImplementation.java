@@ -63,6 +63,17 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
         }
     }
 
+    @Override
+    public void reconnect(int retryCount) {
+        for (int i = 0; i < retryCount; i++) {
+            System.out.println("Trying to reconnect. Attempt nr. " + i);
+            establishConnection();
+            if (connectionIsReadyToUse()) {
+                break;
+            }
+        }
+    }
+
     public Pop3WebSocketsImplementation(String host, int port, boolean encryptedConnection, String username, String password) {
         this.serverAddress = host;
         this.serverPort = port;

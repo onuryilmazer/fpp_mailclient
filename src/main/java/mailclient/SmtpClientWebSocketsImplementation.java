@@ -26,6 +26,7 @@ public class SmtpClientWebSocketsImplementation implements SmtpClient {
         establishConnection();
     }
 
+    @Override
     public void sendMail(String sender, String[] recipients, String subject, String message) {
         if (!connectionIsReadyToUse()) {
             System.out.println("Error: connection is not ready to use. Can't send mail.");
@@ -47,6 +48,7 @@ public class SmtpClientWebSocketsImplementation implements SmtpClient {
         System.out.println(readSocket().toString());
     }
 
+    @Override
     public boolean connectionIsReadyToUse() {
         if (!loggedIn) {
             return false;
@@ -57,6 +59,18 @@ public class SmtpClientWebSocketsImplementation implements SmtpClient {
         }
     }
 
+    @Override
+    public void reconnect(int retryCount) {
+        for (int i = 0; i < retryCount; i++) {
+            System.out.println("Trying to reconnect. Attempt nr. " + i);
+            establishConnection();
+            if (connectionIsReadyToUse()) {
+                break;
+            }
+        }
+    }
+
+    @Override
     public void endConnection() {
         writeToSocket("QUIT");
         System.out.println(readSocket().toString());
@@ -65,13 +79,7 @@ public class SmtpClientWebSocketsImplementation implements SmtpClient {
     private void establishConnection() {
         if (connection == null || connection.isClosed()) {
             try {
-                if (encryptedConnection) {
-                    SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
-                    connection = (SSLSocket) sslsocketfactory.createSocket(serverAddress, serverPort);
-                }
-                else {
-                    connection = new Socket(serverAddress, serverPort);
-                }
+                connection = new Socket(serverAddress, serverPort);
 
                 ServerResponse s1 = readSocket();
                 System.out.println(s1.toString());
@@ -84,6 +92,18 @@ public class SmtpClientWebSocketsImplementation implements SmtpClient {
                 System.out.println(s2.toString());
                 if (s2.statusCode != 250) {
                     System.out.println("Error: EHLO command was not accepted.");
+                }
+
+                if (encryptedConnection) {
+                    writeToSocket("STARTTLS");
+                    ServerResponse tlsResponse = readSocket();
+                    System.out.println(tlsResponse.toString());
+                    if (tlsResponse.statusCode != 220) {
+                        System.out.println("Error: STARTTLS command was not accepted.");
+                    }
+                    SSLSocketFactory sslsocketfactory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+                    connection = (SSLSocket) sslsocketfactory.createSocket(connection, connection.getInetAddress().getHostAddress(), connection.getPort(), true);
+                    ((SSLSocket)connection).startHandshake();
                 }
 
                 writeToSocket("AUTH LOGIN");
@@ -104,10 +124,6 @@ public class SmtpClientWebSocketsImplementation implements SmtpClient {
                     loggedIn = true;
                 }
 
-                if (encryptedConnection) {
-                    writeToSocket("STARTTLS");
-                    System.out.println(readSocket().toString());
-                }
             }
             catch (UnknownHostException e) {
                 System.out.println("Error: Hostname couldn't be resolved: " + e.getMessage());
@@ -133,7 +149,7 @@ public class SmtpClientWebSocketsImplementation implements SmtpClient {
             return new ServerResponse(response.toString());
         }
         catch (IOException e) {
-            System.out.println("An I/O error occurred. The connection might have timed out. " + e.getMessage());
+            System.out.println("An I/O error occurred. " + e.getMessage());
             return new ServerResponse("");
         }
     }
@@ -145,7 +161,7 @@ public class SmtpClientWebSocketsImplementation implements SmtpClient {
             pop3Writer.flush();
         }
         catch (IOException e) {
-            System.out.println("An I/O error occurred. The connection might have timed out. " + e.getMessage());
+            System.out.println("An I/O error occurred. " + e.getMessage());
         }
     }
 
@@ -155,9 +171,9 @@ public class SmtpClientWebSocketsImplementation implements SmtpClient {
         String infoText;
 
         ServerResponse(String response) {
-            statusCode = Integer.parseInt(response.substring(0,3));
-            infoText = response.substring(3);
-            multiline = response.charAt(3) == '-';
+            statusCode = response.length() == 0 ? -1 : Integer.parseInt(response.substring(0,3));
+            infoText = response.length() == 0 ? "" : response.substring(3);
+            multiline = response.length() == 0 ? false : response.charAt(3) == '-';
         }
 
         @Override

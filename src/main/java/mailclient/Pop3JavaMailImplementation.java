@@ -70,6 +70,17 @@ public class Pop3JavaMailImplementation implements Pop3Client {
         return emailStore.isConnected() && isLoggedIn();
     }
 
+    @Override
+    public void reconnect(int retryCount) {
+        for (int i = 0; i < retryCount; i++) {
+            System.out.println("Trying to reconnect. Attempt nr. " + i);
+            establishConnection();
+            if (connectionIsReadyToUse()) {
+                break;
+            }
+        }
+    }
+
     public Pop3JavaMailImplementation(String host, int port, boolean encryptedConnection, String username, String password) {
         mailProperties = new Properties();
         mailProperties.put("mail.pop3.host", host);
