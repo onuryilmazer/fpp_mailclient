@@ -34,8 +34,8 @@ public class Pop3JavaMailImplementation implements Pop3Client {
     @Override
     public void showMail(int mailNumber) {
         try {
-            printMailMetadata(mails[mailNumber]);
-            printMailContent(mails[mailNumber]);
+            printMailMetadata(mails[mailNumber-1]);
+            printMailContent(mails[mailNumber-1]);
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
             //TODO handle exception
