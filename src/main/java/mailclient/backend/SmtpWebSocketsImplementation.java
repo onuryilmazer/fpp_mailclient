@@ -1,4 +1,4 @@
-package mailclient;
+package mailclient.backend;
 
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;

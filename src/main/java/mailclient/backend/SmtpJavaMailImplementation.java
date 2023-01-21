@@ -1,4 +1,4 @@
-package mailclient;
+package mailclient.backend;
 
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;

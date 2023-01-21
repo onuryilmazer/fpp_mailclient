@@ -4,7 +4,7 @@
  */
 
 
-package mailclient;
+package mailclient.backend;
 
 import com.sun.mail.util.MailConnectException;
 

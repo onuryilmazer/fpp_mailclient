@@ -5,7 +5,7 @@
         Java IO - Streams: https://jenkov.com/tutorials/java-io/streams.html
  */
 
-package mailclient;
+package mailclient.backend;
 
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;

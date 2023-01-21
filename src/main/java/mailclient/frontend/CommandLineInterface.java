@@ -1,4 +1,6 @@
-package mailclient;
+package mailclient.frontend;
+
+import mailclient.backend.*;
 
 import java.util.*;
 

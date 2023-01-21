@@ -1,4 +1,4 @@
-package mailclient;
+package mailclient.backend;
 
 public class MailServer {
     private String description;

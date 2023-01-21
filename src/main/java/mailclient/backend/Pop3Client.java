@@ -1,4 +1,4 @@
-package mailclient;
+package mailclient.backend;
 
 public interface Pop3Client {
     void listMails();
