@@ -10,7 +10,7 @@ public class LoginScreen extends JFrame implements ActionListener {
     private JPasswordField password;
     private JCheckBox showPasswordCheckbox, encryptedServerCheckbox;
     private JButton cancelButton, loginButton;
-    private JComboBox connectionProtocolCombobox;
+    private JComboBox savedUsersCombobox, connectionProtocolCombobox;
     private JLabel passVisibleEmojiLabel, encryptionEmojiLabel;
     private ImageIcon titleIcon, passwordVisibleIcon, passwordInvisibleIcon, encryptionIcon, noencryptionIcon, cancelIcon, loginIcon;
 
@@ -32,6 +32,15 @@ public class LoginScreen extends JFrame implements ActionListener {
         JPanel centerBoxPanel = new JPanel();
         centerBoxPanel.setLayout(new BoxLayout(centerBoxPanel, BoxLayout.Y_AXIS));
         this.add(centerBoxPanel, BorderLayout.CENTER);
+
+        JPanel savedUsersPanel = new JPanel();
+        savedUsersPanel.setBorder(BorderFactory.createTitledBorder("Saved Users"));
+        savedUsersPanel.setLayout(new GridLayout(1,3,10,5));
+        savedUsersPanel.add(new JLabel("Select a user:"));
+        savedUsersPanel.add(savedUsersCombobox = new JComboBox());
+        savedUsersPanel.add(new JLabel(""));
+        centerBoxPanel.add(savedUsersPanel);
+
 
         JPanel userRelatedInputsPanel = new JPanel();
         userRelatedInputsPanel.setBorder(BorderFactory.createTitledBorder("User"));
@@ -112,8 +121,8 @@ public class LoginScreen extends JFrame implements ActionListener {
         loginIcon = new ImageIcon(getClass().getResource("/icons/arrow_right.png"));
         loginButton.setIcon(loginIcon);
 
-        this.setLocationRelativeTo(null);  //Sets the initial position of the frame as the center of the screen.
         this.pack();                       //Resizes the frame automatically.
+        this.setLocationRelativeTo(null);  //Sets the initial position of the frame as the center of the screen.
         this.setVisible(true);
     }
 
@@ -131,6 +140,15 @@ public class LoginScreen extends JFrame implements ActionListener {
         else if (e.getSource() == loginButton) {
             if (!areInputsValid()) {
                 JOptionPane.showMessageDialog(this, "Please make sure that your inputs are valid.", "Invalid inputs.", JOptionPane.ERROR_MESSAGE);
+            }
+            else {
+                //TODO call main window and dispose of this one.
+            }
+        }
+        else if (e.getSource() == cancelButton) {
+            int selection = JOptionPane.showConfirmDialog(this, "Are you sure that you want to quit?", "Exit confirmation.", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+            if (selection == 0) {
+                this.dispose();
             }
         }
     }
