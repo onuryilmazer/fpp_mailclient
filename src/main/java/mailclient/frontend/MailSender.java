@@ -5,52 +5,43 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-public class MailReader extends JFrame implements ActionListener {
+public class MailSender extends JFrame implements ActionListener {
     private JToolBar buttonsToolbar;
-    private JButton deleteButton, closeButton;
+    private JButton cancelButton, sendButton;
     private JLabel senderLabel, receiverLabel, ccLabel, bccLabel, subjectLabel;
     private JTextField senderField, receiverField, ccField, bccField, subjectField;
     private JTextArea mailTextArea;
-    private ImageIcon deleteIcon, backIcon, titleIcon;
+    private ImageIcon cancelIcon, sendIcon, titleIcon;
     private MainWindow parentFrame;
     private String sender, receiver, cc, bcc, subject, mailBody;
-    private int mailID;
 
     public static void main(String[] args) {
-        //for testing purposes.
-        new MailReader(null, 1,"onur", "asd", "qwe", "boss", "important", "mail body\nwdqwdwq deneme");
+        new MailSender(null);
     }
 
-    MailReader(MainWindow parentFrame, int mailID, String sender, String receiver, String cc, String bcc, String subject, String mailBody) {
+    MailSender(MainWindow parentFrame) {
         this.parentFrame = parentFrame;
-        this.mailID = mailID;
-        this.sender = sender;
-        this.receiver = receiver;
-        this.cc = cc;
-        this.bcc = bcc;
-        this.subject = subject;
-        this.mailBody = mailBody;
 
-        this.setTitle("Subject: " + subject);
+        this.setTitle("New Mail...");
         titleIcon = new ImageIcon(getClass().getResource("/icons/email.png"));
         this.setIconImage(titleIcon.getImage());
         this.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 
         buttonsToolbar = new JToolBar();
 
-        deleteButton = new JButton();
-        deleteButton.setText("Delete Mail");
-        deleteIcon = new ImageIcon(getClass().getResource("/icons/wastebasket.png"));
-        deleteButton.setIcon(deleteIcon);
-        deleteButton.addActionListener(this);
-        buttonsToolbar.add(deleteButton);
+        sendButton = new JButton();
+        sendButton.setText("Send Mail");
+        sendIcon = new ImageIcon(getClass().getResource("/icons/writing_hand.png"));
+        sendButton.setIcon(sendIcon);
+        sendButton.addActionListener(this);
+        buttonsToolbar.add(sendButton);
 
-        closeButton = new JButton();
-        closeButton.setText("Close Page");
-        backIcon = new ImageIcon(getClass().getResource("/icons/x.png"));
-        closeButton.setIcon(backIcon);
-        closeButton.addActionListener(this);
-        buttonsToolbar.add(closeButton);
+        cancelButton = new JButton();
+        cancelButton.setText("Cancel");
+        cancelIcon = new ImageIcon(getClass().getResource("/icons/x.png"));
+        cancelButton.setIcon(cancelIcon);
+        cancelButton.addActionListener(this);
+        buttonsToolbar.add(cancelButton);
 
         this.add(buttonsToolbar, BorderLayout.NORTH);
 
@@ -120,12 +111,6 @@ public class MailReader extends JFrame implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == closeButton) {
-            this.dispose();
-        }
-        else if (e.getSource() == deleteButton) {
-            parentFrame.deleteMail(mailID);
-            this.dispose();
-        }
+
     }
 }

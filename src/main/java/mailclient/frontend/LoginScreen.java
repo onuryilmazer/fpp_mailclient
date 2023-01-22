@@ -6,12 +6,12 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class LoginScreen extends JFrame implements ActionListener {
-    private JTextField username, mailAddress, realName, serverAddress, serverport;
+    private JTextField username, mailAddress, realName, pop3ServerAddress, pop3ServerPort, smtpServerAddress, smtpServerPort;
     private JPasswordField password;
-    private JCheckBox showPasswordCheckbox, encryptedServerCheckbox;
+    private JCheckBox showPasswordCheckbox, pop3ServerEncryptedCheckbox, smtpServerEncryptedCheckbox;
     private JButton cancelButton, loginButton;
     private JComboBox savedUsersCombobox, connectionProtocolCombobox;
-    private JLabel passVisibleEmojiLabel, encryptionEmojiLabel;
+    private JLabel passVisibleEmojiLabel, pop3EncryptionEmojiLabel, smtpEncryptionEmojiLabel;
     private ImageIcon titleIcon, passwordVisibleIcon, passwordInvisibleIcon, encryptionIcon, noencryptionIcon, cancelIcon, loginIcon;
 
     public static void main(String[] args) {
@@ -73,32 +73,46 @@ public class LoginScreen extends JFrame implements ActionListener {
 
         centerBoxPanel.add(userRelatedInputsPanel);
 
+        encryptionIcon = new ImageIcon(getClass().getResource("/icons/lock.png"));
+        noencryptionIcon = new ImageIcon(getClass().getResource("/icons/unlock.png"));
 
         JPanel serverRelatedInputsPanel = new JPanel();
         serverRelatedInputsPanel.setBorder(BorderFactory.createTitledBorder("Mail server"));
-        serverRelatedInputsPanel.setLayout(new GridLayout(3,3, 10, 5));
+        serverRelatedInputsPanel.setLayout(new GridLayout(5,3, 10, 5));
 
-        serverRelatedInputsPanel.add(new JLabel("Server Address:"));
-        serverRelatedInputsPanel.add(serverAddress = new JTextField());
+        serverRelatedInputsPanel.add(new JLabel("POP3 Address:"));
+        serverRelatedInputsPanel.add(pop3ServerAddress = new JTextField());
         serverRelatedInputsPanel.add(new JLabel(""));
 
-        serverRelatedInputsPanel.add(new JLabel("Server Port:"));
-        serverRelatedInputsPanel.add(serverAddress = new JTextField());
+        serverRelatedInputsPanel.add(new JLabel("POP3 Port:"));
+        serverRelatedInputsPanel.add(pop3ServerAddress = new JTextField());
 
         JPanel encryptionContainer = new JPanel(new FlowLayout(FlowLayout.LEFT, 0,0));
-        encryptedServerCheckbox = new JCheckBox("Encryption", false);
-        encryptedServerCheckbox.addActionListener(this);  //for changing the emoji.
-        encryptionIcon = new ImageIcon(getClass().getResource("/icons/lock.png"));
-        noencryptionIcon = new ImageIcon(getClass().getResource("/icons/unlock.png"));
-        encryptionEmojiLabel = new JLabel(noencryptionIcon);
-        encryptionContainer.add(encryptionEmojiLabel);
-        encryptionContainer.add(encryptedServerCheckbox);
+        pop3ServerEncryptedCheckbox = new JCheckBox("Encryption", false);
+        pop3ServerEncryptedCheckbox.addActionListener(this);  //for changing the emoji.
+        pop3EncryptionEmojiLabel = new JLabel(noencryptionIcon);
+        encryptionContainer.add(pop3EncryptionEmojiLabel);
+        encryptionContainer.add(pop3ServerEncryptedCheckbox);
         serverRelatedInputsPanel.add(encryptionContainer);
 
-
-        serverRelatedInputsPanel.add(new JLabel("Connection protocol:"));
-        serverRelatedInputsPanel.add(connectionProtocolCombobox = new JComboBox(new String[]{"POP3", "SMTP"}));
         serverRelatedInputsPanel.add(new JLabel(""));
+        serverRelatedInputsPanel.add(new JLabel(""));
+        serverRelatedInputsPanel.add(new JLabel(""));
+
+        serverRelatedInputsPanel.add(new JLabel("SMTP Address:"));
+        serverRelatedInputsPanel.add(smtpServerAddress = new JTextField());
+        serverRelatedInputsPanel.add(new JLabel(""));
+
+        serverRelatedInputsPanel.add(new JLabel("SMTP Port:"));
+        serverRelatedInputsPanel.add(smtpServerPort = new JTextField());
+
+        JPanel encryptionContainer2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 0,0));
+        smtpServerEncryptedCheckbox = new JCheckBox("Encryption", false);
+        smtpServerEncryptedCheckbox.addActionListener(this);  //for changing the emoji.
+        smtpEncryptionEmojiLabel = new JLabel(noencryptionIcon);
+        encryptionContainer2.add(smtpEncryptionEmojiLabel);
+        encryptionContainer2.add(smtpServerEncryptedCheckbox);
+        serverRelatedInputsPanel.add(encryptionContainer2);
 
         centerBoxPanel.add(serverRelatedInputsPanel);
 
@@ -133,9 +147,13 @@ public class LoginScreen extends JFrame implements ActionListener {
             password.setEchoChar(source.isSelected() ? (char) 0 : '*');
             passVisibleEmojiLabel.setIcon( source.isSelected() ? passwordVisibleIcon : passwordInvisibleIcon );
         }
-        else if (e.getSource() == encryptedServerCheckbox) {
+        else if (e.getSource() == pop3ServerEncryptedCheckbox) {
             JCheckBox source = (JCheckBox) e.getSource();
-            encryptionEmojiLabel.setIcon( source.isSelected() ? encryptionIcon : noencryptionIcon );
+            pop3EncryptionEmojiLabel.setIcon( source.isSelected() ? encryptionIcon : noencryptionIcon );
+        }
+        else if (e.getSource() == smtpServerEncryptedCheckbox) {
+            JCheckBox source = (JCheckBox) e.getSource();
+            smtpEncryptionEmojiLabel.setIcon( source.isSelected() ? encryptionIcon : noencryptionIcon );
         }
         else if (e.getSource() == loginButton) {
             if (!areInputsValid()) {

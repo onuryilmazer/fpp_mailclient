@@ -17,6 +17,7 @@ public class MainWindow extends JFrame implements ActionListener {
     private String[][] placeholderData;
 
     public static void main(String[] args) {
+        //for testing purposes.
         new MainWindow();
     }
 
@@ -111,6 +112,9 @@ public class MainWindow extends JFrame implements ActionListener {
         };
     }
 
+    public void deleteMail(int mailID) {
+        //TODO
+    }
 
     @Override
     public void actionPerformed(ActionEvent e) {
