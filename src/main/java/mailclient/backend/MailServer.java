@@ -3,21 +3,19 @@ package mailclient.backend;
 public class MailServer {
     private String description;
     private String pop3Address;
-    private int pop3InsecurePort;
-    private int pop3SecurePort;
+    private int pop3Port;
+    private boolean pop3Encrypted;
     private String smtpAddress;
-    private int smtpInsecurePort;
-    private int smtpSecurePort;
-    private boolean insecureConnectionsAllowed;
+    private int smtpPort;
+    private boolean smtpEncrypted;
 
-    public MailServer(String pop3Address, int pop3InsecurePort, int pop3SecurePort, String smtpAddress, int smtpInsecurePort, int smtpSecurePort, boolean insecureConnectionsAllowed, String description) {
+    public MailServer(String pop3Address, int pop3Port, boolean pop3Encrypted, String smtpAddress, int smtpPort, boolean smtpEncrypted, String description) {
         this.pop3Address = pop3Address;
-        this.pop3InsecurePort = pop3InsecurePort;
-        this.pop3SecurePort = pop3SecurePort;
+        this.pop3Port = pop3Port;
+        this.pop3Encrypted = pop3Encrypted;
         this.smtpAddress = smtpAddress;
-        this.smtpInsecurePort = smtpInsecurePort;
-        this.smtpSecurePort = smtpSecurePort;
-        this.insecureConnectionsAllowed = insecureConnectionsAllowed;
+        this.smtpPort = smtpPort;
+        this.smtpEncrypted = smtpEncrypted;
         this.description = description;
     }
 
@@ -25,39 +23,27 @@ public class MailServer {
         return pop3Address;
     }
 
-    public int getPop3InsecurePort() {
-        return pop3InsecurePort;
-    }
-
-    public int getPop3SecurePort() {
-        return pop3SecurePort;
-    }
-
-    public int getPop3Port(boolean secure) {
-        return secure ? getPop3SecurePort() : getPop3InsecurePort();
+    public int getPop3Port() {
+        return pop3Port;
     }
 
     public String getSmtpAddress() {
         return smtpAddress;
     }
 
-    public int getSmtpInsecurePort() {
-        return smtpInsecurePort;
-    }
-
-    public int getSmtpSecurePort() {
-        return smtpSecurePort;
+    public int getSmtpPort() {
+        return smtpPort;
     }
 
     public String getDescription() {
         return description;
     }
 
-    public int getSmtpPort(boolean secure) {
-        return secure ? getSmtpSecurePort() : getSmtpInsecurePort();
+    public boolean isPop3Encrypted() {
+        return pop3Encrypted;
     }
 
-    public boolean insecureConnectionsAllowed() {
-        return insecureConnectionsAllowed;
+    public boolean isSmtpEncrypted() {
+        return smtpEncrypted;
     }
 }

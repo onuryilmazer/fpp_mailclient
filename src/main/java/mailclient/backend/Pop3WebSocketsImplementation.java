@@ -11,6 +11,8 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import java.io.*;
 import java.net.*;
+import java.util.Base64;
+import java.util.HashMap;
 
 public class Pop3WebSocketsImplementation implements Pop3Client {
     private String serverAddress;
@@ -22,95 +24,15 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
     private boolean loggedIn = false;
     private static final String CRLF = "\r\n";  //Line termination character: carriage return line feed pair. Source: POP3 Specification.
 
-    @Override
-    public void listMails() {
-        list();
-    }
 
-    @Override
-    public void showMail(int mailNumber) {
-        retr(mailNumber);
-    }
-
-    @Override
-    public void getNumberOfMails() {
-        stat();
-    }
-
-    @Override
-    public void closeConnection() {
-        quit();
-        loggedIn = false;
-    }
-
-    @Override
-    public boolean isLoggedIn() {
-        return loggedIn;
-    }
-
-    @Override
-    public boolean connectionIsReadyToUse() {
-        if (!isLoggedIn()) {
-            return false;
-        }
-        else {
-            writeToSocket("NOOP");
-            if (readSocket(false).statusIndicator == ServerResponse.STATUS.OK) {
-                return true;
-            } else {
-                return false;
-            }
-        }
-    }
-
-    @Override
-    public void reconnect(int retryCount) {
-        for (int i = 0; i < retryCount; i++) {
-            System.out.println("Trying to reconnect. Attempt nr. " + i);
-            establishConnection();
-            if (connectionIsReadyToUse()) {
-                break;
-            }
-        }
-    }
-
-    public Pop3WebSocketsImplementation(String host, int port, boolean encryptedConnection, String username, String password) {
-        this.serverAddress = host;
-        this.serverPort = port;
-        this.encryptedConnection = encryptedConnection;
+    public Pop3WebSocketsImplementation(MailServer myServer, String username, String password) {
+        this.serverAddress = myServer.getPop3Address();
+        this.serverPort = myServer.getPop3Port();
+        this.encryptedConnection = myServer.isPop3Encrypted();
         this.username = username;
         this.password = password;
         establishConnection();
-    }
-
-    private void stat() {
-        writeToSocket("STAT");
-        ServerResponse response = readSocket(false);
-        String numberToBeParsed = response.info.substring(0, response.info.indexOf(" "));
-        int numberOfMails = Integer.parseInt(numberToBeParsed);
-        System.out.println("Number of mails: " + numberOfMails);
-    }
-
-    private void list() {
-        writeToSocket("LIST");
-        System.out.println("Response: " + readSocket(true));
-    }
-
-    private void retr(int number) {
-        writeToSocket("RETR " + number);
-        System.out.println("Response: " + readSocket(true));
-    }
-
-    private void quit() {
-        writeToSocket("QUIT");
-        System.out.println("Response: " + readSocket(false));
-        try {
-            connection.close();
-        }
-        catch (IOException e) {
-
-        }
-
+        fetchMailUIDLs();
     }
 
     private void establishConnection() {
@@ -150,6 +72,204 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
         }
     }
 
+    @Override
+    public Mail[] fetchMailUIDLs() {
+        ServerResponse response = uidl();
+        String[] lines = response.message.split(CRLF);
+        int numberOfMails = lines.length -2; //first and last lines are not id's.
+
+        if(numberOfMails <= 0) {
+            return null;
+        }
+
+        Mail[] mails = new Mail[numberOfMails];
+
+        for (int i = 1; i < lines.length-1; i++) {
+            mails[i-1] = new Mail();
+            String line = lines[i];
+            int mailNumber = Integer.parseInt(line.substring(0, line.indexOf(" ")));
+            String UIDL = line.substring(line.indexOf(" ")+1, line.length());
+            mails[i-1].mailNr = mailNumber;
+            mails[i-1].mailUIDL = UIDL;
+        }
+
+        return mails;
+    }
+
+    @Override
+    public Mail fetchMailEnvelope(Mail mail) throws IllegalArgumentException {
+        //top returns mail metadata and the first line of the mail body.
+        ServerResponse mailRequest = top(mail.mailNr, 1);
+
+        if (mailRequest.statusIndicator == ServerResponse.STATUS.ERR) {
+            throw new IllegalArgumentException("Error: Mail " + mail.mailNr + " was not found.\n" + mailRequest.message);
+        }
+
+        String base64DecodedMessage = mailRequest.decodeBase64Parts();
+
+        int toIndex = base64DecodedMessage.indexOf("To: ");
+        int toEndIndex = base64DecodedMessage.indexOf(CRLF, toIndex);
+        if (toIndex != -1 && toEndIndex != -1 && toIndex > toEndIndex) {
+            mail.to = base64DecodedMessage.substring(toIndex+4, toEndIndex);
+        }
+    
+        int subjectIndex = base64DecodedMessage.indexOf("Subject: ");
+        int subjectEndIndex = base64DecodedMessage.indexOf(CRLF, subjectIndex);
+        if (subjectIndex != -1 && subjectEndIndex != -1 && subjectIndex > subjectEndIndex) {
+            mail.subject = base64DecodedMessage.substring(subjectIndex + 9, subjectEndIndex);
+        }
+
+        int dateIndex = base64DecodedMessage.indexOf("Date: ");
+        int dateEndIndex = base64DecodedMessage.indexOf(CRLF, dateIndex);
+        if (dateIndex != -1 && dateEndIndex != -1 && dateIndex > dateEndIndex) {
+            mail.date = base64DecodedMessage.substring(dateIndex+6,dateEndIndex);
+        }
+
+        int fromIndex = base64DecodedMessage.indexOf("From: ");
+        int fromEndIndex = base64DecodedMessage.indexOf(CRLF, fromIndex);
+        if (fromIndex != -1 && fromEndIndex != -1 && fromIndex > fromEndIndex) {
+            mail.from = base64DecodedMessage.substring(fromIndex + 6, fromEndIndex);
+        }
+
+        int replyToIndex = base64DecodedMessage.indexOf("Reply-To: ");
+        int replyToEndIndex = base64DecodedMessage.indexOf(CRLF, replyToIndex);
+        if (replyToIndex != -1 && replyToEndIndex != -1 && replyToIndex > replyToEndIndex) {
+            mail.replyTo = base64DecodedMessage.substring(replyToIndex + 10, replyToEndIndex);
+        }
+
+        //TODO: set cc & bcc. Send yourself a mail with someone cc'ed and see how it is encoded.
+        mail.cc = "";
+
+        mail.bcc = "";
+
+        mail.envelopeDownloaded = true;
+
+        return mail;
+    }
+
+    @Override
+    public Mail fetchMailBody(Mail mail) {
+        ServerResponse mailRequest = retr(mail.mailNr);
+
+        String base64DecodedMessage = mailRequest.decodeBase64Parts();
+
+        if (mailRequest.statusIndicator == ServerResponse.STATUS.ERR) {
+            throw new IllegalArgumentException("Error: Mail " + mail.mailNr + " was not found.\n" + mailRequest.message);
+        }
+
+        int boundaryIndex = base64DecodedMessage.indexOf("boundary=\"");
+        int boundaryEndIndex = base64DecodedMessage.indexOf("\"", boundaryIndex+10);
+        String boundary = base64DecodedMessage.substring(boundaryIndex+10, boundaryEndIndex);
+
+        if (boundaryIndex == -1 || boundaryEndIndex == -1 || boundaryIndex <= boundaryEndIndex) {
+            mail.mailBody = "Couldn't parse mail body. Showing it as it is:\n" + base64DecodedMessage;
+            mail.bodyDownloaded = true;
+            return mail;
+        }
+
+        int mailBodyIndex = base64DecodedMessage.indexOf("--" + boundary, boundaryEndIndex);
+        int mailBodyEndIndex = base64DecodedMessage.indexOf("--" + boundary + "--", mailBodyIndex);
+
+        if (mailBodyIndex == -1 || mailBodyEndIndex == -1 || mailBodyIndex <= mailBodyIndex) {
+            mail.mailBody = "Couldn't parse mail body. Showing it as it is:\n" + base64DecodedMessage;
+            mail.bodyDownloaded = true;
+            return mail;
+        }
+
+        mail.mailBody = base64DecodedMessage.substring(mailBodyIndex, mailBodyEndIndex);
+        mail.bodyDownloaded = true;
+        return mail;
+    }
+
+    @Override
+    public int getNumberOfMails() {
+        ServerResponse response = stat();
+        //TODO check if response OK
+        String numberToBeParsed = response.message.substring(0, response.message.indexOf(" "));
+        int numberOfMails = Integer.parseInt(numberToBeParsed);
+        return numberOfMails;
+    }
+
+    @Override
+    public void closeConnection() {
+        quit();
+        loggedIn = false;
+    }
+
+    @Override
+    public boolean isLoggedIn() {
+        return loggedIn;
+    }
+
+    @Override
+    public boolean connectionIsReadyToUse() {
+        if (!isLoggedIn()) {
+            return false;
+        }
+        else {
+            writeToSocket("NOOP");
+            if (readSocket(false).statusIndicator == ServerResponse.STATUS.OK) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    @Override
+    public void reconnect(int retryCount) {
+        for (int i = 0; i < retryCount; i++) {
+            System.out.println("Trying to reconnect. Attempt nr. " + i);
+            establishConnection();
+            if (connectionIsReadyToUse()) {
+                break;
+            }
+        }
+    }
+
+
+
+    private ServerResponse stat() {
+        writeToSocket("STAT");
+        return readSocket(false);
+    }
+
+    private ServerResponse list() {
+        writeToSocket("LIST");
+        return readSocket(true);
+    }
+
+    private ServerResponse top(int mailNumber, int lines) {
+        writeToSocket("TOP " + mailNumber + " " + lines);
+        return readSocket(true);
+    }
+
+    private ServerResponse retr(int number) {
+        writeToSocket("RETR " + number);
+        return readSocket(true);
+    }
+
+    private ServerResponse uidl(int msgnr) {
+        writeToSocket("UIDL " + msgnr);
+        return readSocket(false);
+    }
+
+    private ServerResponse uidl() {
+        writeToSocket("UIDL");
+        return readSocket(true);
+    }
+
+    private void quit() {
+        writeToSocket("QUIT");
+        System.out.println("Response: " + readSocket(false));
+        try {
+            connection.close();
+        }
+        catch (IOException e) {
+            //TODO throw error.
+        }
+    }
+
     private ServerResponse readSocket(boolean multiline) {
         try {
             Reader pop3Reader = new InputStreamReader(connection.getInputStream());
@@ -183,21 +303,37 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
     private class ServerResponse {
         enum STATUS {OK, ERR, UNKNOWN}
         STATUS statusIndicator;
-        String info;
+        String message;
 
         ServerResponse(String response) {
             if (response.startsWith("+OK")) { statusIndicator = STATUS.OK; }
             else if (response.startsWith("-ERR")) { statusIndicator = STATUS.ERR; }
             else { statusIndicator = STATUS.UNKNOWN; }
 
-            info = response.replaceFirst("(\\+OK[ ]?|-ERR[ ]?)", "");
+            message = response.replaceFirst("(\\+OK[ ]?|-ERR[ ]?)", "");
+        }
+
+        public String decodeBase64Parts() {
+            String base64DecodedMessage = message;
+            String prefix = "=?utf-8?B?";
+            String suffix = "?=";
+
+            int currentIndex = base64DecodedMessage.indexOf(prefix);
+            int currentEndIndex = base64DecodedMessage.indexOf(suffix, currentIndex);
+
+            while (currentIndex != -1 && currentEndIndex != -1) {
+                String encodedText = base64DecodedMessage.substring(currentIndex + prefix.length(), currentEndIndex);
+                String decodedText = new String(Base64.getDecoder().decode(encodedText));
+                //System.out.println("Replacing: " + encodedText + "\n" + decodedText);
+                base64DecodedMessage = base64DecodedMessage.substring(0, currentIndex) + decodedText + base64DecodedMessage.substring(currentEndIndex+suffix.length(), base64DecodedMessage.length());
+                currentIndex = base64DecodedMessage.indexOf(prefix);
+                currentEndIndex = base64DecodedMessage.indexOf(suffix, currentIndex);
+            }
+            return base64DecodedMessage;
         }
 
         @Override
-        public String toString() { return statusIndicator.toString() + " " + info; }
+        public String toString() { return statusIndicator.toString() + " " + message; }
     }
 
-    private class Mail {
-        //TODO
-    }
 }

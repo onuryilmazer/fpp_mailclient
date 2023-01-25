@@ -1,6 +1,8 @@
 package mailclient.frontend;
 
 import com.sun.tools.javac.Main;
+import mailclient.backend.Pop3Client;
+import mailclient.backend.SmtpClient;
 
 import javax.swing.*;
 import java.awt.*;
@@ -8,6 +10,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 public class MainWindow extends JFrame implements ActionListener {
+    private Pop3Client mailReader;
+    private SmtpClient mailSender;
     private JToolBar controlsToolbar;
     private JButton newMailButton, syncMailsButton, optionsButton, logoutButton;
     private JTable emailsTable;
@@ -18,10 +22,13 @@ public class MainWindow extends JFrame implements ActionListener {
 
     public static void main(String[] args) {
         //for testing purposes.
-        new MainWindow();
+        new MainWindow(null, null);
     }
 
-    MainWindow() {
+    MainWindow(Pop3Client mailReader, SmtpClient mailSender) {
+        this.mailReader = mailReader;
+        this.mailSender = mailSender;
+
         this.setTitle("My Mails");
         titleIcon = new ImageIcon(getClass().getResource("/icons/email.png"));
         this.setIconImage(titleIcon.getImage());

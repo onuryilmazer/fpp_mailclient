@@ -17,12 +17,12 @@ public class SmtpWebSocketsImplementation implements SmtpClient {
     private boolean loggedIn = false;
     private static final String CRLF = "\r\n";  //Line termination character.
 
-    public SmtpWebSocketsImplementation(String serverAddress, int serverPort, boolean encryptedConnection, String username, String password) {
-        this.serverAddress = serverAddress;
-        this.serverPort = serverPort;
+    public SmtpWebSocketsImplementation(MailServer myServer, String username, String password) {
+        this.serverAddress = myServer.getSmtpAddress();
+        this.serverPort = myServer.getSmtpPort();
+        this.encryptedConnection = myServer.isSmtpEncrypted();
         this.username = username;
         this.password = password;
-        this.encryptedConnection = encryptedConnection;
         establishConnection();
     }
 

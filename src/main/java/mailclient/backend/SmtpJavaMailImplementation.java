@@ -13,17 +13,16 @@ public class SmtpJavaMailImplementation implements SmtpClient {
     private Properties mailProperties;
     Session emailSession;
 
-    public SmtpJavaMailImplementation(String serverAddress, int serverPort, boolean encryptedConnection, String username, String password) {
+    public SmtpJavaMailImplementation(MailServer myServer, String username, String password) {
         mailProperties = new Properties();
         mailProperties.put("mail.smtp.auth", "true");
-        mailProperties.put("mail.smtp.starttls.enable", encryptedConnection ? "true" : "false");
-        mailProperties.put("mail.smtp.host", serverAddress);
-        mailProperties.put("mail.smtp.port", serverPort);
+        mailProperties.put("mail.smtp.starttls.enable", myServer.isSmtpEncrypted() ? "true" : "false");
+        mailProperties.put("mail.smtp.host", myServer.getSmtpAddress());
+        mailProperties.put("mail.smtp.port", myServer.getSmtpPort());
         this.username = username;
         this.password = password;
-        this.encryptedConnection = encryptedConnection;
+        this.encryptedConnection = myServer.isSmtpEncrypted();
         establishConnection();
-
     }
 
     private void establishConnection() {

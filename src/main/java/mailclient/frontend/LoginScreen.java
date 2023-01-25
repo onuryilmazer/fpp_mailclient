@@ -1,5 +1,7 @@
 package mailclient.frontend;
 
+import mailclient.backend.*;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -10,9 +12,10 @@ public class LoginScreen extends JFrame implements ActionListener {
     private JPasswordField password;
     private JCheckBox showPasswordCheckbox, pop3ServerEncryptedCheckbox, smtpServerEncryptedCheckbox;
     private JButton cancelButton, loginButton;
-    private JComboBox savedUsersCombobox, connectionProtocolCombobox;
+    private JComboBox savedUsersCombobox, connectionMethodCombobox;
     private JLabel passVisibleEmojiLabel, pop3EncryptionEmojiLabel, smtpEncryptionEmojiLabel;
     private ImageIcon titleIcon, passwordVisibleIcon, passwordInvisibleIcon, encryptionIcon, noencryptionIcon, cancelIcon, loginIcon;
+    private int parsedPop3Port, parsedSmtpPort;
 
     public static void main(String[] args) {
         new LoginScreen();
@@ -78,14 +81,19 @@ public class LoginScreen extends JFrame implements ActionListener {
 
         JPanel serverRelatedInputsPanel = new JPanel();
         serverRelatedInputsPanel.setBorder(BorderFactory.createTitledBorder("Mail server"));
-        serverRelatedInputsPanel.setLayout(new GridLayout(5,3, 10, 5));
+        serverRelatedInputsPanel.setLayout(new GridLayout(6,3, 10, 5));
+
+        serverRelatedInputsPanel.add(new JLabel("Connection method:"));
+        serverRelatedInputsPanel.add(connectionMethodCombobox = new JComboBox<>(new String[]{"WebSocket", "JavaMail Library"}));
+        serverRelatedInputsPanel.add(new JLabel(""));
+
 
         serverRelatedInputsPanel.add(new JLabel("POP3 Address:"));
         serverRelatedInputsPanel.add(pop3ServerAddress = new JTextField());
         serverRelatedInputsPanel.add(new JLabel(""));
 
         serverRelatedInputsPanel.add(new JLabel("POP3 Port:"));
-        serverRelatedInputsPanel.add(pop3ServerAddress = new JTextField());
+        serverRelatedInputsPanel.add(pop3ServerPort = new JTextField());
 
         JPanel encryptionContainer = new JPanel(new FlowLayout(FlowLayout.LEFT, 0,0));
         pop3ServerEncryptedCheckbox = new JCheckBox("Encryption", false);
@@ -156,11 +164,33 @@ public class LoginScreen extends JFrame implements ActionListener {
             smtpEncryptionEmojiLabel.setIcon( source.isSelected() ? encryptionIcon : noencryptionIcon );
         }
         else if (e.getSource() == loginButton) {
-            if (!areInputsValid()) {
-                JOptionPane.showMessageDialog(this, "Please make sure that your inputs are valid.", "Invalid inputs.", JOptionPane.ERROR_MESSAGE);
+            if (inputsAreValid()) {
+                MailServer myServer = new MailServer(pop3ServerAddress.getText(), parsedPop3Port, pop3ServerEncryptedCheckbox.isSelected(), smtpServerAddress.getText(), parsedSmtpPort, smtpServerEncryptedCheckbox.isSelected(), "GUI new server");
+
+                Pop3Client myClientReader;
+                SmtpClient myClientSender;
+
+                //TODO call main window and dispose of this one.
+                //TODO throw errors in the backend classes and catch them on GUI (instead of printing to console.)
+
+                System.out.println(username.getText() + " " + String.valueOf(password.getPassword()));
+
+                //if (connectionMethodCombobox.getSelectedIndex() == 0) {
+                    myClientReader = new Pop3WebSocketsImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
+                    myClientSender = new SmtpWebSocketsImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
+                //}
+                //else {
+                    //myClientReader = new Pop3JavaMailImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
+                    //myClientSender = new SmtpJavaMailImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
+                //}
+
+                MainWindow main = new MainWindow(myClientReader, myClientSender);
+                this.dispose();
+
             }
             else {
-                //TODO call main window and dispose of this one.
+                //Error messages are shown by the method areInputsValid(). No need to do anything here.
+                //JOptionPane.showMessageDialog(this, "Please make sure that your inputs are valid.", "Invalid inputs.", JOptionPane.ERROR_MESSAGE);
             }
         }
         else if (e.getSource() == cancelButton) {
@@ -171,8 +201,31 @@ public class LoginScreen extends JFrame implements ActionListener {
         }
     }
 
-    private boolean areInputsValid() {
+    private boolean inputsAreValid() {
         //TODO
-        return false;
+
+        try {
+            parsedPop3Port = Integer.parseInt(pop3ServerPort.getText());
+            parsedSmtpPort = Integer.parseInt(smtpServerPort.getText());
+        }
+        catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this,"Invalid port number(s). Please check your inputs.", "Error", JOptionPane.ERROR_MESSAGE);
+            System.out.println(pop3ServerPort.getText() + " " + smtpServerPort.getText());
+            return false;
+        }
+
+        if (username.getText().trim().equals("")
+                || password.getPassword().toString().trim().equals("")
+                || mailAddress.getText().trim().equals("")
+                || realName.getText().trim().equals("")
+                || pop3ServerAddress.getText().trim().equals("")
+                || pop3ServerPort.getText().trim().equals("")
+                || smtpServerAddress.getText().trim().equals("")
+                || smtpServerPort.getText().trim().equals("")) {
+            JOptionPane.showMessageDialog(this,"Please make sure that you fill out all fields.", "Error", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+
+        return true;
     }
 }

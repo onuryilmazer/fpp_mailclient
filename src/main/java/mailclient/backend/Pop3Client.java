@@ -1,11 +1,13 @@
 package mailclient.backend;
 
 public interface Pop3Client {
-    void listMails();
+    int getNumberOfMails();
 
-    void showMail(int mailNumber);
+    Mail[] fetchMailUIDLs();
 
-    void getNumberOfMails();
+    Mail fetchMailEnvelope(Mail mail);
+
+    Mail fetchMailBody(Mail partialMail);
 
     void closeConnection();
 

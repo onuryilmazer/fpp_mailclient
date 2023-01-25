@@ -7,13 +7,21 @@ import java.util.*;
 public class CommandLineInterface {
     public static void main(String[] args) {
 
-        MailServer[] servers = {new MailServer("pop3.uni-jena.de", 110, 995, "smtp.uni-jena.de", 25, 587, true, "uni.jena.de (POP3 & SMTP)"),
-                                    new MailServer("pop.gmx.net", -1, 995, "mail.gmx.net", -1, 587,false, "gmx.net (POP3 & SMTP)")};
+        MailServer[] servers = {
+                new MailServer("pop3.uni-jena.de", 110, false, "smtp.uni-jena.de", 25, false, "uni.jena.de (POP3 & SMTP unencrypted)"),
+                new MailServer("pop3.uni-jena.de", 995, true, "smtp.uni-jena.de", 587, true, "uni.jena.de (POP3 & SMTP encrypted)"),
+                new MailServer("pop.gmx.net", 995, true, "mail.gmx.net", 587,true, "gmx.net (POP3 & SMTP) encrypted")
+        };
 
-        int connectionMethod = showMenuDialog("Connection method",
-                new String[]{"Websockets", "JavaMail API"});
+        int connectionMethod = showMenuDialog(
+                "Connection method",
+                new String[]{"Websockets", "JavaMail API"}
+        );
 
-        for (int i = 0; i < servers.length; i++) { System.out.println(i + ": " + servers[i].getDescription()); }
+        for (int i = 0; i < servers.length; i++) {
+            System.out.println(i + ": " + servers[i].getDescription());
+        }
+
         int serverChoice = getIntegerFromUser("Mail server (enter -1 to pick a custom server): ");
 
         while (serverChoice < -1 || serverChoice >= servers.length) {
@@ -24,27 +32,24 @@ public class CommandLineInterface {
         MailServer myServer;
         if (serverChoice == -1) {
             String description = getStringFromUser("Server name: ");
-            boolean insecureConnectionsAllowed = showMenuDialog("Does your server support insecure connections?", new String[]{"Yes", "No"}) == 0;
-            String pop3URL = getStringFromUser("Server POP3 address: ");
-            int securePop3Port = getIntegerFromUser("Port for secure POP3 connections: ");
-            int insecurePop3Port = insecureConnectionsAllowed ? getIntegerFromUser("Port for insecure POP3 connections: ") : -1;
-            String smtpURL = getStringFromUser("Server SMTP address: ");
-            int secureSmtpPort = getIntegerFromUser("Port for secure SMTP connections: ");
-            int insecureSmtpPort = insecureConnectionsAllowed ? getIntegerFromUser("Port for insecure SMTP connections: ") : -1;
+            String pop3URL = getStringFromUser("POP3 Server Address: ");
+            int pop3Port = getIntegerFromUser("POP3 Port: ");
+            boolean pop3Encrypted = showMenuDialog("Is this port intended for encrypted connections?", new String[]{"Yes", "No"}) == 0;
+            String smtpURL = getStringFromUser("SMTP Server Address: ");
+            int smtpPort = getIntegerFromUser("SMTP Port: ");
+            boolean smtpEncrypted = showMenuDialog("Is this port intended for encrypted connections?", new String[]{"Yes", "No"}) == 0;
 
-            myServer = new MailServer(pop3URL, insecurePop3Port, securePop3Port, smtpURL, secureSmtpPort, insecureSmtpPort, insecureConnectionsAllowed, description);
+            myServer = new MailServer(pop3URL, pop3Port, pop3Encrypted, smtpURL, smtpPort, smtpEncrypted, description);
         }
         else {
             myServer = servers[serverChoice];
         }
 
-        boolean connectEncrypted = true;
-        if (myServer.insecureConnectionsAllowed()) {
-            connectEncrypted = showMenuDialog("Encryption", new String[]{"Yes", "No"}) == 0;
-        }
+        int credentials = showMenuDialog(
+                "User credentials",
+                new String[]{"Read the values from the environment variables MAIL_USERNAME, MAIL_PASSWORD.", "Enter a new username and password."}
+        );
 
-        int credentials = showMenuDialog("User credentials",
-                new String[]{"Read the values from the environment variables MAIL_USERNAME, MAIL_PASSWORD.", "Enter a new username and password."});
 
         String username, password;
         if (credentials == 0) {
@@ -60,12 +65,12 @@ public class CommandLineInterface {
         SmtpClient myClientSender;
 
         if (connectionMethod == 0) {
-            myClientReader = new Pop3WebSocketsImplementation(myServer.getPop3Address(), myServer.getPop3Port(connectEncrypted), connectEncrypted, username, password);
-            myClientSender = new SmtpWebSocketsImplementation(myServer.getSmtpAddress(), myServer.getSmtpPort(connectEncrypted), connectEncrypted, username, password);
+            myClientReader = new Pop3WebSocketsImplementation(myServer, username, password);
+            myClientSender = new SmtpWebSocketsImplementation(myServer, username, password);
         }
         else {
-            myClientReader = new Pop3JavaMailImplementation(myServer.getPop3Address(), myServer.getPop3Port(connectEncrypted), connectEncrypted, username, password);
-            myClientSender = new SmtpJavaMailImplementation(myServer.getSmtpAddress(), myServer.getSmtpPort(connectEncrypted), connectEncrypted, username, password);
+            myClientReader = new Pop3JavaMailImplementation(myServer, username, password);
+            myClientSender = new SmtpJavaMailImplementation(myServer, username, password);
         }
 
 
@@ -75,15 +80,23 @@ public class CommandLineInterface {
 
             switch (command) {
                 case 0:
-                    myClientReader.getNumberOfMails();
+                    System.out.println("Number: " + myClientReader.getNumberOfMails());
                     break;
 
                 case 1:
-                    myClientReader.listMails();
+                    Mail[] allMails = myClientReader.fetchMailUIDLs();
+                    for (int i = 0; i < allMails.length; i++) {
+                        System.out.println(allMails[i].mailNr + " (UID: " + allMails[i].mailUIDL + ")");
+                    }
                     break;
 
                 case 2:
-                    myClientReader.showMail(getIntegerFromUser("Enter the mail number"));
+                    int mailNumber = getIntegerFromUser("Enter the mail number");
+                    Mail selectedMail = new Mail();
+                    selectedMail.mailNr = mailNumber;
+                    myClientReader.fetchMailEnvelope(selectedMail);
+                    myClientReader.fetchMailBody(selectedMail);
+                    System.out.println(selectedMail.mailBody);
                     break;
                 case 3:
                     String sender = getStringFromUser("Sender address: ");
@@ -143,17 +156,15 @@ public class CommandLineInterface {
     private static String getStringFromUser(String prompt) {
         System.out.println(prompt + ": ");
         Scanner consoleReader = new Scanner(System.in);
-        String userInput = consoleReader.next();
 
-        return userInput;
+        return consoleReader.next();
     }
 
     private static String getStringLineFromUser(String prompt) {
         System.out.println(prompt + ": ");
         Scanner consoleReader = new Scanner(System.in);
-        String userInput = consoleReader.nextLine();
 
-        return userInput;
+        return consoleReader.nextLine();
     }
 
     private static int getIntegerFromUser(String prompt) {

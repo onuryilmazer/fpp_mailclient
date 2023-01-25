@@ -6,6 +6,8 @@
 
 package mailclient.backend;
 
+import com.sun.mail.pop3.POP3Folder;
+import com.sun.mail.pop3.POP3Store;
 import com.sun.mail.util.MailConnectException;
 
 import javax.mail.*;
@@ -14,78 +16,16 @@ import java.util.Properties;
 
 public class Pop3JavaMailImplementation implements Pop3Client {
     private Properties mailProperties;
-    Session emailSession;
-    Store emailStore;
-    private boolean loggedIn = false;
-    private Message[] mails;
+    private Session emailSession;
+    private POP3Store emailStore;
+    private POP3Folder emailFolder;
+    private Message[] messageArray;
 
-    @Override
-    public void listMails() {
-        if (mails == null) {
-            downloadMails();
-        }
-
-        for (int i = 0; i < mails.length; i++) {
-            System.out.println("Mail #" + i);
-            printMailMetadata(mails[i]);
-        }
-    }
-
-    @Override
-    public void showMail(int mailNumber) {
-        try {
-            printMailMetadata(mails[mailNumber-1]);
-            printMailContent(mails[mailNumber-1]);
-        } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
-            //TODO handle exception
-        }
-    }
-
-    @Override
-    public void getNumberOfMails() {
-        if (mails == null) {
-            downloadMails();
-        }
-
-        System.out.println("Number of mails: " + mails.length);
-    }
-
-    public void closeConnection() {
-        try {
-            emailStore.close();
-            loggedIn = false;
-        } catch (MessagingException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public boolean isLoggedIn() {
-        return loggedIn;
-    }
-
-    @Override
-    public boolean connectionIsReadyToUse() {
-        return emailStore.isConnected() && isLoggedIn();
-    }
-
-    @Override
-    public void reconnect(int retryCount) {
-        for (int i = 0; i < retryCount; i++) {
-            System.out.println("Trying to reconnect. Attempt nr. " + i);
-            establishConnection();
-            if (connectionIsReadyToUse()) {
-                break;
-            }
-        }
-    }
-
-    public Pop3JavaMailImplementation(String host, int port, boolean encryptedConnection, String username, String password) {
+    public Pop3JavaMailImplementation(MailServer myServer, String username, String password) {
         mailProperties = new Properties();
-        mailProperties.put("mail.pop3.host", host);
-        mailProperties.put("mail.pop3.port", String.valueOf(port));
-        mailProperties.put("mail.pop3.starttls.enable", (encryptedConnection ? "true" : "false"));
+        mailProperties.put("mail.pop3.host", myServer.getPop3Address());
+        mailProperties.put("mail.pop3.port", String.valueOf(myServer.getPop3Port()));
+        mailProperties.put("mail.pop3.starttls.enable", (myServer.isPop3Encrypted() ? "true" : "false"));
         mailProperties.put("username", username);
         mailProperties.put("password", password);
 
@@ -95,9 +35,10 @@ public class Pop3JavaMailImplementation implements Pop3Client {
     private void establishConnection() {
         emailSession = Session.getInstance(mailProperties);
         try {
-            emailStore = emailSession.getStore("pop3s");
+            emailStore = (POP3Store) emailSession.getStore("pop3s");
             emailStore.connect(mailProperties.getProperty("mail.pop3.host"), mailProperties.getProperty("username"), mailProperties.getProperty("password"));
-            loggedIn = true;
+            emailFolder = (POP3Folder) emailStore.getFolder("INBOX");  //Only possible folder for the POP3 Protocol.
+            emailFolder.open(Folder.READ_ONLY);
         } catch (AuthenticationFailedException e) {
             System.out.println("Invalid username/password.");
         } catch (NoSuchProviderException | MailConnectException e) {
@@ -107,88 +48,163 @@ public class Pop3JavaMailImplementation implements Pop3Client {
         }
     }
 
-    private void downloadMails() {
+    @Override
+    public int getNumberOfMails() {
         try {
-            Folder emailFolder = emailStore.getFolder("INBOX");  //Only possible folder for the POP3 Protocol.
-            emailFolder.open(Folder.READ_ONLY);
-            mails = emailFolder.getMessages();
+            return emailFolder.getMessageCount();
         } catch (MessagingException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static void printMailMetadata(javax.mail.Message mail) {
+    @Override
+    public Mail[] fetchMailUIDLs() {
+        Mail[] mails;
+
+        FetchProfile fp = new FetchProfile();
+        fp.add(UIDFolder.FetchProfileItem.UID);
+
         try {
-            // FROM
-            Address[] senders = mail.getFrom();
-            if (senders != null) {
-                System.out.print("FROM: ");
-                for (int i = 0; i < senders.length; i++) {
-                    System.out.print(senders[i].toString());
-                    System.out.print( i < senders.length-1 ? ", " : "." );   //Komma bis auf die letzte Mail und danach einen Punkt.
+            //downloads all UIDL's aka unique pop3 mail identifiers.
+            emailFolder.fetch(emailFolder.getMessages(), fp);
+            messageArray = emailFolder.getMessages();
+
+            mails = new Mail[messageArray.length];
+
+            for(int i = 0; i < messageArray.length; i++) {
+                mails[i] = new Mail();
+                mails[i].mailUIDL = emailFolder.getUID(messageArray[i]);
+                mails[i].mailNr = messageArray[i].getMessageNumber();
+            }
+        }
+        catch (MessagingException e) {
+            throw new RuntimeException(e);
+        }
+
+        return mails;
+    }
+
+    @Override
+    public Mail fetchMailEnvelope(Mail mail) {
+        try {
+            Message message = emailFolder.getMessage(mail.mailNr);
+
+            if (message.getFrom() != null) {
+                for (Address addr : message.getFrom()) {
+                    mail.from += addr.toString() + ", ";
                 }
-                System.out.println();
             }
 
-            // TO
-            Address[] recipientsTO = mail.getRecipients(Message.RecipientType.TO);
-            Address[] recipientsCC = mail.getRecipients(Message.RecipientType.CC);
-            Address[] recipientsBCC = mail.getRecipients(Message.RecipientType.BCC);
-
-            if (recipientsTO != null) {
-                System.out.print("TO: ");
-                for (int i = 0; i < recipientsTO.length; i++) {
-                    System.out.print(recipientsTO[i]);
-                    System.out.print( i < recipientsTO.length-1 ? ", " : "." );
+            if (message.getRecipients(Message.RecipientType.TO) != null) {
+                for (Address addr : message.getRecipients(Message.RecipientType.TO)) {
+                    mail.to += addr.toString() + ", ";
                 }
-                System.out.println();
             }
 
-            if (recipientsCC != null) {
-                System.out.print("CC: ");
-                for (int i = 0; i < recipientsCC.length; i++) {
-                    System.out.print(recipientsCC[i]);
-                    System.out.print( i < recipientsCC.length-1 ? ", " : "." );
+            if (message.getRecipients(Message.RecipientType.CC) != null) {
+                for (Address addr : message.getRecipients(Message.RecipientType.CC)) {
+                    mail.cc += addr.toString() + ", ";
                 }
-                System.out.println();
             }
 
-            if (recipientsBCC != null) {
-                System.out.print("BCC: ");
-                for (int i = 0; i < recipientsBCC.length; i++) {
-                    System.out.print(recipientsBCC[i]);
-                    System.out.print( i < recipientsBCC.length-1 ? ", " : "." );
+            if (message.getRecipients(Message.RecipientType.BCC) != null) {
+                for (Address addr : message.getRecipients(Message.RecipientType.BCC)) {
+                    mail.bcc += addr.toString() + ", ";
                 }
-                System.out.println();
             }
 
-            // SUBJECT
-            if (mail.getSubject() != null) {
-                System.out.println("SUBJECT: " + mail.getSubject());
+            if (message.getReplyTo() != null) {
+                mail.replyTo = (message.getReplyTo()[0].toString());
             }
-        } catch (MessagingException e) {
+
+            if (message.getReceivedDate() != null) {
+                mail.date = message.getReceivedDate().toString();
+            }
+
+            if (message.getSubject() != null) {
+                mail.subject = message.getSubject();
+            }
+
+            mail.envelopeDownloaded = true;
+        }
+        catch (MessagingException e) {
             System.out.println("Error: Mail could not be processed. There might be formatting issues with it: " + e.getMessage());
+        }
+
+        return mail;
+    }
+
+    @Override
+    public Mail fetchMailBody(Mail mail) {
+        if (!mail.envelopeDownloaded) {
+            throw new IllegalArgumentException("Error: Mail envelope was not downloaded.");
+        }
+
+        try {
+            mail.mailBody = getMailContent(emailFolder.getMessage(mail.mailNr));
+            mail.bodyDownloaded = true;
+        } catch (MessagingException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return mail;
+    }
+
+    public void closeConnection() {
+        try {
+            emailFolder.close();
+            emailStore.close();
+        } catch (MessagingException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    private static void printMailContent(Part mailpart) throws MessagingException, IOException {   //Message implements Part
-        if (mailpart.isMimeType("text/plain")) {  //https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types ,
-            System.out.println((String) mailpart.getContent());
+    @Override
+    public boolean isLoggedIn() {
+        return emailStore.isConnected();
+    }
+
+    @Override
+    public boolean connectionIsReadyToUse() {
+        return emailStore.isConnected() && emailFolder.isOpen();
+    }
+
+    @Override
+    public void reconnect(int retryCount) {
+        for (int i = 0; i < retryCount; i++) {
+            if (connectionIsReadyToUse()) {
+                System.out.println("You are connected!");
+                break;
+            }
+            System.out.println("Trying to reconnect. Attempt nr. " + i);
+            establishConnection();
         }
-        else if (mailpart.isMimeType("message/rfc822")) {  //Nested message.
-            printMailContent((Part) mailpart.getContent());
+    }
+
+    private String getMailContent(Part mailpart) throws MessagingException, IOException {   //Message implements Part
+        if (mailpart.isMimeType("text/plain")) {
+            //https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types ,
+            return ((String) mailpart.getContent());
+        }
+        else if (mailpart.isMimeType("message/rfc822")) {
+            //Nested message.
+            return getMailContent((Part) mailpart.getContent());
         }
         else if (mailpart.isMimeType("multipart/*")) {
+            //Multiple message parts.
+            String textPieces = "";
             Multipart parts = (Multipart) mailpart.getContent();
-            for (int i = 0; i < parts.getCount(); i++) {  //Bearbeite jeden Teil einzeln.
-                printMailContent(parts.getBodyPart(i));
+            for (int i = 0; i < parts.getCount(); i++) {
+                textPieces += getMailContent(parts.getBodyPart(i)) + "\n";
             }
+            return textPieces;
         }
         else {
             //TODO: expand accepted mimetypes.
-            System.out.println("Unknown mimetype: " + mailpart.getContent().toString());
+            return ("Unknown mimetype: " + mailpart.getContent().toString());
         }
-
     }
 
 }
