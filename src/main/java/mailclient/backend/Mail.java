@@ -1,6 +1,8 @@
 package mailclient.backend;
 
-public class Mail {
+import java.io.Serializable;
+
+public class Mail implements Serializable {
     public int mailNr;
     public String mailUIDL;
 
@@ -12,5 +14,6 @@ public class Mail {
     //set to true only after downloading the relevant parts.
     public boolean envelopeDownloaded=false;
     public boolean bodyDownloaded=false;
+    public boolean read = false;
 
 }

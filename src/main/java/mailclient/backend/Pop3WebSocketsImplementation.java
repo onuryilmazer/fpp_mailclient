@@ -7,12 +7,15 @@
 
 package mailclient.backend;
 
+import com.sun.source.tree.Tree;
+
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import java.io.*;
 import java.net.*;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.TreeMap;
 
 public class Pop3WebSocketsImplementation implements Pop3Client {
     private String serverAddress;
@@ -73,7 +76,7 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
     }
 
     @Override
-    public Mail[] fetchMailUIDLs() {
+    public TreeMap<Integer, String> fetchMailUIDLs() {
         ServerResponse response = uidl();
         String[] lines = response.message.split(CRLF);
         int numberOfMails = lines.length -2; //first and last lines are not id's.
@@ -82,18 +85,16 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
             return null;
         }
 
-        Mail[] mails = new Mail[numberOfMails];
+        TreeMap<Integer, String> mailUIDLs = new TreeMap<>();
 
         for (int i = 1; i < lines.length-1; i++) {
-            mails[i-1] = new Mail();
             String line = lines[i];
             int mailNumber = Integer.parseInt(line.substring(0, line.indexOf(" ")));
             String UIDL = line.substring(line.indexOf(" ")+1, line.length());
-            mails[i-1].mailNr = mailNumber;
-            mails[i-1].mailUIDL = UIDL;
+            mailUIDLs.put(mailNumber, UIDL);
         }
 
-        return mails;
+        return mailUIDLs;
     }
 
     @Override
@@ -109,31 +110,31 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
 
         int toIndex = base64DecodedMessage.indexOf("To: ");
         int toEndIndex = base64DecodedMessage.indexOf(CRLF, toIndex);
-        if (toIndex != -1 && toEndIndex != -1 && toIndex > toEndIndex) {
+        if (toIndex != -1 && toEndIndex != -1 && toIndex < toEndIndex) {
             mail.to = base64DecodedMessage.substring(toIndex+4, toEndIndex);
         }
     
         int subjectIndex = base64DecodedMessage.indexOf("Subject: ");
         int subjectEndIndex = base64DecodedMessage.indexOf(CRLF, subjectIndex);
-        if (subjectIndex != -1 && subjectEndIndex != -1 && subjectIndex > subjectEndIndex) {
+        if (subjectIndex != -1 && subjectEndIndex != -1 && subjectIndex < subjectEndIndex) {
             mail.subject = base64DecodedMessage.substring(subjectIndex + 9, subjectEndIndex);
         }
 
         int dateIndex = base64DecodedMessage.indexOf("Date: ");
         int dateEndIndex = base64DecodedMessage.indexOf(CRLF, dateIndex);
-        if (dateIndex != -1 && dateEndIndex != -1 && dateIndex > dateEndIndex) {
+        if (dateIndex != -1 && dateEndIndex != -1 && dateIndex < dateEndIndex) {
             mail.date = base64DecodedMessage.substring(dateIndex+6,dateEndIndex);
         }
 
         int fromIndex = base64DecodedMessage.indexOf("From: ");
         int fromEndIndex = base64DecodedMessage.indexOf(CRLF, fromIndex);
-        if (fromIndex != -1 && fromEndIndex != -1 && fromIndex > fromEndIndex) {
+        if (fromIndex != -1 && fromEndIndex != -1 && fromIndex < fromEndIndex) {
             mail.from = base64DecodedMessage.substring(fromIndex + 6, fromEndIndex);
         }
 
         int replyToIndex = base64DecodedMessage.indexOf("Reply-To: ");
         int replyToEndIndex = base64DecodedMessage.indexOf(CRLF, replyToIndex);
-        if (replyToIndex != -1 && replyToEndIndex != -1 && replyToIndex > replyToEndIndex) {
+        if (replyToIndex != -1 && replyToEndIndex != -1 && replyToIndex < replyToEndIndex) {
             mail.replyTo = base64DecodedMessage.substring(replyToIndex + 10, replyToEndIndex);
         }
 
@@ -159,13 +160,14 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
 
         int boundaryIndex = base64DecodedMessage.indexOf("boundary=\"");
         int boundaryEndIndex = base64DecodedMessage.indexOf("\"", boundaryIndex+10);
-        String boundary = base64DecodedMessage.substring(boundaryIndex+10, boundaryEndIndex);
 
         if (boundaryIndex == -1 || boundaryEndIndex == -1 || boundaryIndex <= boundaryEndIndex) {
             mail.mailBody = "Couldn't parse mail body. Showing it as it is:\n" + base64DecodedMessage;
             mail.bodyDownloaded = true;
             return mail;
         }
+
+        String boundary = base64DecodedMessage.substring(boundaryIndex+10, boundaryEndIndex);
 
         int mailBodyIndex = base64DecodedMessage.indexOf("--" + boundary, boundaryEndIndex);
         int mailBodyEndIndex = base64DecodedMessage.indexOf("--" + boundary + "--", mailBodyIndex);

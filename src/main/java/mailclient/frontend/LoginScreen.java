@@ -6,16 +6,21 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.*;
+import java.util.LinkedList;
+import java.util.Properties;
 
 public class LoginScreen extends JFrame implements ActionListener {
     private JTextField username, mailAddress, realName, pop3ServerAddress, pop3ServerPort, smtpServerAddress, smtpServerPort;
     private JPasswordField password;
     private JCheckBox showPasswordCheckbox, pop3ServerEncryptedCheckbox, smtpServerEncryptedCheckbox;
-    private JButton cancelButton, loginButton;
+    private JButton cancelButton, loginButton, saveUserButton;
     private JComboBox savedUsersCombobox, connectionMethodCombobox;
     private JLabel passVisibleEmojiLabel, pop3EncryptionEmojiLabel, smtpEncryptionEmojiLabel;
     private ImageIcon titleIcon, passwordVisibleIcon, passwordInvisibleIcon, encryptionIcon, noencryptionIcon, cancelIcon, loginIcon;
     private int parsedPop3Port, parsedSmtpPort;
+    private LinkedList<Properties> users = new LinkedList<>();
+    private String usersFolder = "applicationData/savedUsers/";
 
     public static void main(String[] args) {
         new LoginScreen();
@@ -41,7 +46,10 @@ public class LoginScreen extends JFrame implements ActionListener {
         savedUsersPanel.setLayout(new GridLayout(1,3,10,5));
         savedUsersPanel.add(new JLabel("Select a user:"));
         savedUsersPanel.add(savedUsersCombobox = new JComboBox());
-        savedUsersPanel.add(new JLabel(""));
+        loadUsers();
+        savedUsersCombobox.addActionListener(this);
+        savedUsersPanel.add(saveUserButton = new JButton("Save current user"));
+        saveUserButton.addActionListener(this);
         centerBoxPanel.add(savedUsersPanel);
 
 
@@ -148,6 +156,79 @@ public class LoginScreen extends JFrame implements ActionListener {
         this.setVisible(true);
     }
 
+    private void loadUsers() {
+        savedUsersCombobox.removeAllItems();
+        savedUsersCombobox.addItem("New user"   );
+
+        File savedUsersFolder = new File(usersFolder);
+        File[] listOfFiles = savedUsersFolder.listFiles();
+        if (listOfFiles == null) {
+            return;
+        }
+
+        users = new LinkedList<>();
+        for (int i = 0; i < listOfFiles.length; i++) {
+            if (listOfFiles[i].isFile()) {
+                try {
+                    FileInputStream readFile = new FileInputStream(listOfFiles[i]);
+                    ObjectInputStream readObject = new ObjectInputStream(readFile);
+
+                    Properties p = (Properties) readObject.readObject();
+                    users.add(p);
+
+                    readFile.close();
+                    readObject.close();
+
+                } catch (FileNotFoundException e) {
+                    JOptionPane.showMessageDialog(this, "Can't read file: " + e.getMessage());
+                } catch (IOException e) {
+                    JOptionPane.showMessageDialog(this, "Can't read object: " + e.getMessage());
+                } catch (ClassNotFoundException e) {
+                    JOptionPane.showMessageDialog(this, "Can't read object, unexpected class: " + e.getMessage());
+                }
+            }
+        }
+
+        for (int i = 0; i < users.size(); i++) {
+            Properties p = users.get(i);
+            savedUsersCombobox.addItem(p.getProperty("username"));
+        }
+    }
+
+    private void saveUser() {
+        try {
+            File parentFolder = new File( usersFolder );
+            if (!parentFolder.exists()) {
+                System.out.println("Created the folder: " + parentFolder.mkdirs());
+            }
+
+            FileOutputStream file = new FileOutputStream(usersFolder + username.getText() + ".ser");
+            ObjectOutputStream out = new ObjectOutputStream(file);
+
+            Properties currentUser = new Properties();
+            currentUser.put("username", username.getText());
+            //won't save password
+            currentUser.put("mail", mailAddress.getText());
+            currentUser.put("realname", realName.getText());
+            currentUser.put("pop3server", pop3ServerAddress.getText());
+            currentUser.put("pop3port", pop3ServerPort.getText());
+            currentUser.put("pop3encrypted", pop3ServerEncryptedCheckbox.isSelected() ? "true" : "false");
+            currentUser.put("smtpserver", smtpServerAddress.getText());
+            currentUser.put("smtpport", smtpServerPort.getText());
+            currentUser.put("smtpencrypted", smtpServerEncryptedCheckbox.isSelected() ? "true" : "false");
+
+            out.writeObject(currentUser);
+            out.close();
+
+        } catch (FileNotFoundException e) {
+            JOptionPane.showMessageDialog(this, "Can't save user: " + e.getMessage());
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Can't save file: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
     @Override
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == showPasswordCheckbox) {
@@ -175,14 +256,14 @@ public class LoginScreen extends JFrame implements ActionListener {
 
                 System.out.println(username.getText() + " " + String.valueOf(password.getPassword()));
 
-                //if (connectionMethodCombobox.getSelectedIndex() == 0) {
+                if (connectionMethodCombobox.getSelectedIndex() == 0) {
                     myClientReader = new Pop3WebSocketsImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
                     myClientSender = new SmtpWebSocketsImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
-                //}
-                //else {
-                    //myClientReader = new Pop3JavaMailImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
-                    //myClientSender = new SmtpJavaMailImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
-                //}
+                }
+                else {
+                    myClientReader = new Pop3JavaMailImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
+                    myClientSender = new SmtpJavaMailImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
+                }
 
                 MainWindow main = new MainWindow(myClientReader, myClientSender);
                 this.dispose();
@@ -198,6 +279,26 @@ public class LoginScreen extends JFrame implements ActionListener {
             if (selection == 0) {
                 this.dispose();
             }
+        }
+        else if (e.getSource() == savedUsersCombobox) {
+            for (Properties user : users) {
+                if (user.get("username").equals(savedUsersCombobox.getSelectedItem())) {
+                    username.setText(user.getProperty("username"));
+                    mailAddress.setText(user.getProperty("mail"));
+                    realName.setText(user.getProperty("realname"));
+                    pop3ServerAddress.setText(user.getProperty("pop3server"));
+                    pop3ServerPort.setText(user.getProperty("pop3port"));
+                    pop3ServerEncryptedCheckbox.setSelected(user.getProperty("pop3encrypted").equals("true"));
+                    smtpServerAddress.setText(user.getProperty("smtpserver"));
+                    smtpServerPort.setText(user.getProperty("smtpport"));
+                    smtpServerEncryptedCheckbox.setSelected(user.getProperty("smtpencrypted").equals("true"));
+                }
+            }
+        }
+
+        else if (e.getSource() == saveUserButton) {
+            saveUser();
+            loadUsers();
         }
     }
 

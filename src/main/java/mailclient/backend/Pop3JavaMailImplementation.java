@@ -13,6 +13,7 @@ import com.sun.mail.util.MailConnectException;
 import javax.mail.*;
 import java.io.IOException;
 import java.util.Properties;
+import java.util.TreeMap;
 
 public class Pop3JavaMailImplementation implements Pop3Client {
     private Properties mailProperties;
@@ -58,9 +59,8 @@ public class Pop3JavaMailImplementation implements Pop3Client {
     }
 
     @Override
-    public Mail[] fetchMailUIDLs() {
-        Mail[] mails;
-
+    public TreeMap<Integer, String> fetchMailUIDLs() {
+        TreeMap<Integer, String> mailUIDLs = new TreeMap<>();
         FetchProfile fp = new FetchProfile();
         fp.add(UIDFolder.FetchProfileItem.UID);
 
@@ -69,19 +69,15 @@ public class Pop3JavaMailImplementation implements Pop3Client {
             emailFolder.fetch(emailFolder.getMessages(), fp);
             messageArray = emailFolder.getMessages();
 
-            mails = new Mail[messageArray.length];
-
             for(int i = 0; i < messageArray.length; i++) {
-                mails[i] = new Mail();
-                mails[i].mailUIDL = emailFolder.getUID(messageArray[i]);
-                mails[i].mailNr = messageArray[i].getMessageNumber();
+                mailUIDLs.put(messageArray[i].getMessageNumber(), emailFolder.getUID(messageArray[i]));
             }
         }
         catch (MessagingException e) {
             throw new RuntimeException(e);
         }
 
-        return mails;
+        return mailUIDLs;
     }
 
     @Override
@@ -137,7 +133,7 @@ public class Pop3JavaMailImplementation implements Pop3Client {
     @Override
     public Mail fetchMailBody(Mail mail) {
         if (!mail.envelopeDownloaded) {
-            throw new IllegalArgumentException("Error: Mail envelope was not downloaded.");
+            System.out.println("Error: Mail envelope was not downloaded. UIDL: " + mail.mailUIDL);
         }
 
         try {

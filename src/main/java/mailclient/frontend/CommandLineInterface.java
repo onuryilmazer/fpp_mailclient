@@ -84,9 +84,10 @@ public class CommandLineInterface {
                     break;
 
                 case 1:
-                    Mail[] allMails = myClientReader.fetchMailUIDLs();
-                    for (int i = 0; i < allMails.length; i++) {
-                        System.out.println(allMails[i].mailNr + " (UID: " + allMails[i].mailUIDL + ")");
+                    TreeMap<Integer, String> allMails = myClientReader.fetchMailUIDLs();
+                    while (allMails.entrySet().iterator().hasNext()) {
+                        Map.Entry mapEntry = allMails.entrySet().iterator().next();
+                        System.out.println(mapEntry.getKey() + " (UID: " + mapEntry.getValue() + ")");
                     }
                     break;
 

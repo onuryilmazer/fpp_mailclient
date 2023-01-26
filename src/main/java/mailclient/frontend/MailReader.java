@@ -1,5 +1,7 @@
 package mailclient.frontend;
 
+import mailclient.backend.Mail;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -18,18 +20,20 @@ public class MailReader extends JFrame implements ActionListener {
 
     public static void main(String[] args) {
         //for testing purposes.
-        new MailReader(null, 1,"onur", "asd", "qwe", "boss", "important", "mail body\nwdqwdwq deneme");
+        Mail myMail = new Mail();
+        myMail.mailNr = 1;
+        new MailReader(null, myMail);
     }
 
-    MailReader(MainWindow parentFrame, int mailID, String sender, String receiver, String cc, String bcc, String subject, String mailBody) {
+    MailReader(MainWindow parentFrame, Mail myMail) {
         this.parentFrame = parentFrame;
-        this.mailID = mailID;
-        this.sender = sender;
-        this.receiver = receiver;
-        this.cc = cc;
-        this.bcc = bcc;
-        this.subject = subject;
-        this.mailBody = mailBody;
+        this.mailID = myMail.mailNr;
+        this.sender = myMail.from;
+        this.receiver = myMail.to;
+        this.cc = myMail.to;
+        this.bcc = myMail.bcc;
+        this.subject = myMail.subject;
+        this.mailBody = myMail.mailBody;
 
         this.setTitle("Subject: " + subject);
         titleIcon = new ImageIcon(getClass().getResource("/icons/email.png"));

@@ -1,9 +1,12 @@
 package mailclient.backend;
 
+import java.util.HashMap;
+import java.util.TreeMap;
+
 public interface Pop3Client {
     int getNumberOfMails();
 
-    Mail[] fetchMailUIDLs();
+    TreeMap<Integer, String> fetchMailUIDLs();
 
     Mail fetchMailEnvelope(Mail mail);
 
