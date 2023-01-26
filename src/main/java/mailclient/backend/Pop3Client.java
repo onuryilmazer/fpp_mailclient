@@ -1,5 +1,6 @@
 package mailclient.backend;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.TreeMap;
 
@@ -18,5 +19,5 @@ public interface Pop3Client {
 
     boolean connectionIsReadyToUse();
 
-    void reconnect(int retryCount);
+    void reconnect(int retryCount) throws IOException;
 }

@@ -17,15 +17,16 @@ public class MailReader extends JFrame implements ActionListener {
     private MainWindow parentFrame;
     private String sender, receiver, cc, bcc, subject, mailBody;
     private int mailID;
+    private Font font;
 
     public static void main(String[] args) {
         //for testing purposes.
         Mail myMail = new Mail();
         myMail.mailNr = 1;
-        new MailReader(null, myMail);
+        new MailReader(null, myMail, new Font("Serif", Font.PLAIN, 20));
     }
 
-    MailReader(MainWindow parentFrame, Mail myMail) {
+    MailReader(MainWindow parentFrame, Mail myMail, Font font) {
         this.parentFrame = parentFrame;
         this.mailID = myMail.mailNr;
         this.sender = myMail.from;
@@ -47,6 +48,7 @@ public class MailReader extends JFrame implements ActionListener {
         deleteIcon = new ImageIcon(getClass().getResource("/icons/wastebasket.png"));
         deleteButton.setIcon(deleteIcon);
         deleteButton.addActionListener(this);
+        deleteButton.setEnabled(false);
         buttonsToolbar.add(deleteButton);
 
         closeButton = new JButton();
@@ -110,6 +112,7 @@ public class MailReader extends JFrame implements ActionListener {
         centerContainer.add(Box.createRigidArea(new Dimension(4, 4)));
 
         mailTextArea = new JTextArea(mailBody);
+        mailTextArea.setFont(font);
         JScrollPane mailScrollPane = new JScrollPane(mailTextArea);
         mailScrollPane.setPreferredSize(new Dimension(Short.MAX_VALUE, Short.MAX_VALUE));
 

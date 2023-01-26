@@ -1,7 +1,7 @@
 package mailclient.backend;
 
 public interface SmtpClient {
-    void sendMail(String sender, String[] recipients, String subject, String mailBody);
+    boolean sendMail(String sender, String[] recipients, String subject, String mailBody);
 
     void endConnection();
 

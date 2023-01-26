@@ -27,16 +27,17 @@ public class SmtpWebSocketsImplementation implements SmtpClient {
     }
 
     @Override
-    public void sendMail(String sender, String[] recipients, String subject, String mailBody) {
+    public boolean sendMail(String sender, String[] recipients, String subject, String mailBody) {
         if (!connectionIsReadyToUse()) {
             System.out.println("Error: connection is not ready to use. Can't send mail.");
+            return false;
         }
 
         writeToSocket("MAIL FROM: " + sender);
         System.out.println(readSocket().toString());
 
         for(String r : recipients) {
-            writeToSocket("RCPT TO: " + r);
+            writeToSocket("RCPT TO: <" + r + ">");
             System.out.println(readSocket().toString());
         }
 
@@ -45,7 +46,11 @@ public class SmtpWebSocketsImplementation implements SmtpClient {
         writeToSocket("Subject: " + subject);
         writeToSocket(mailBody);
         writeToSocket(CRLF + "." + CRLF);
-        System.out.println(readSocket().toString());
+        //System.out.println(readSocket().toString());
+        ServerResponse response = readSocket();
+        //TODO: check if status code OK
+        return true;
+
     }
 
     @Override

@@ -37,7 +37,7 @@ public class SmtpJavaMailImplementation implements SmtpClient {
     }
 
     @Override
-    public void sendMail(String sender, String[] recipients, String subject, String mailBody) {
+    public boolean sendMail(String sender, String[] recipients, String subject, String mailBody) {
         try {
             Message message = new MimeMessage(emailSession);
 
@@ -53,9 +53,11 @@ public class SmtpJavaMailImplementation implements SmtpClient {
 
             Transport.send(message);
             System.out.println("Mail was sent succesfully.");
+            return true;
 
         } catch (MessagingException e) {
             System.out.println("Error while sending the mail: " + e.toString());
+            return false;
         }
     }
 

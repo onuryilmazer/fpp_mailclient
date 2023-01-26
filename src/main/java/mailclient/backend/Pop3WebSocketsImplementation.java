@@ -28,7 +28,7 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
     private static final String CRLF = "\r\n";  //Line termination character: carriage return line feed pair. Source: POP3 Specification.
 
 
-    public Pop3WebSocketsImplementation(MailServer myServer, String username, String password) {
+    public Pop3WebSocketsImplementation(MailServer myServer, String username, String password) throws IOException {
         this.serverAddress = myServer.getPop3Address();
         this.serverPort = myServer.getPop3Port();
         this.encryptedConnection = myServer.isPop3Encrypted();
@@ -38,7 +38,7 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
         fetchMailUIDLs();
     }
 
-    private void establishConnection() {
+    private void establishConnection() throws IOException, RuntimeException {
         if (connection == null || connection.isClosed()) {
             try {
                 if (encryptedConnection) {
@@ -50,27 +50,27 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
                 }
 
                 if (readSocket(false).statusIndicator != ServerResponse.STATUS.OK) {
-                    System.out.println("Error: Couldn't connect to the server");
+                    throw new RuntimeException("Error: Couldn't connect to the server");
                 }
 
                 writeToSocket("USER " + username);
                 if (readSocket(false).statusIndicator != ServerResponse.STATUS.OK) {
-                    System.out.println("Error: Username was not accepted by the server.");
+                    throw new RuntimeException("Error: Username was not accepted by the server.");
                 }
 
                 writeToSocket("PASS " + password);
                 if (readSocket(false).statusIndicator != ServerResponse.STATUS.OK) {
-                    System.out.println("Error: Username and/or password was not accepted by the server.");
+                    throw new RuntimeException("Error: Username and/or password was not accepted by the server.");
                 }
                 else {
                     loggedIn = true;
                 }
             }
             catch (UnknownHostException e) {
-                System.out.println("Error: Hostname couldn't be resolved: " + e.getMessage());
+                throw new UnknownHostException("Error: Hostname couldn't be resolved: " + e.getMessage());
             }
             catch (IOException e) {
-                System.out.println("Error: IOException: " + e.getMessage());
+                throw new IOException("Error: IOException: " + e.getMessage());
             }
         }
     }
@@ -219,7 +219,7 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
     }
 
     @Override
-    public void reconnect(int retryCount) {
+    public void reconnect(int retryCount) throws IOException {
         for (int i = 0; i < retryCount; i++) {
             System.out.println("Trying to reconnect. Attempt nr. " + i);
             establishConnection();

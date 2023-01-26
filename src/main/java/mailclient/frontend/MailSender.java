@@ -1,5 +1,7 @@
 package mailclient.frontend;
 
+import mailclient.backend.Mail;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -14,12 +16,14 @@ public class MailSender extends JFrame implements ActionListener {
     private ImageIcon cancelIcon, sendIcon, titleIcon;
     private MainWindow parentFrame;
     private String sender, receiver, cc, bcc, subject, mailBody;
+    private Font font;
 
     public static void main(String[] args) {
-        new MailSender(null);
+        new MailSender(null, new Font("Serif", Font.PLAIN, 20));
     }
 
-    MailSender(MainWindow parentFrame) {
+    MailSender(MainWindow parentFrame, Font font) {
+        this.font = font;
         this.parentFrame = parentFrame;
 
         this.setTitle("New Mail...");
@@ -97,6 +101,7 @@ public class MailSender extends JFrame implements ActionListener {
         centerContainer.add(Box.createRigidArea(new Dimension(4, 4)));
 
         mailTextArea = new JTextArea(mailBody);
+        mailTextArea.setFont(font);
         JScrollPane mailScrollPane = new JScrollPane(mailTextArea);
         mailScrollPane.setPreferredSize(new Dimension(Short.MAX_VALUE, Short.MAX_VALUE));
 
@@ -111,6 +116,19 @@ public class MailSender extends JFrame implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-
+        if (e.getSource() == sendButton) {
+            Mail myMail = new Mail();
+            myMail.from = senderField.getText();
+            myMail.to = receiverField.getText();
+            myMail.subject = subjectField.getText();
+            myMail.mailBody = mailTextArea.getText();
+            if (!parentFrame.sendMail(myMail)) {
+                JOptionPane.showMessageDialog(this, "Error. Message could not be sent.");
+            }
+            this.dispose();
+        }
+        else if (e.getSource() == cancelButton) {
+            this.dispose();
+        }
     }
 }

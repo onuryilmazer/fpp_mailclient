@@ -8,6 +8,7 @@ import mailclient.backend.SmtpClient;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumnModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -22,11 +23,13 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
     private JToolBar controlsToolbar;
     private JButton newMailButton, syncMailsButton, optionsButton, logoutButton;
     private JTable emailsTable;
+    private DefaultTableModel model;
     private ImageIcon titleIcon, newMailIcon, syncMailsIcon, optionsIcon, logoutIcon;
 
     private String[] tableHeaders;
     private String mailRootFolder = "applicationData/savedMails/";
     private ArrayList<Mail> mailsFromDisk = new ArrayList<>();
+    private Font tableFont = new Font("Serif", Font.PLAIN, 20);
 
     public static void main(String[] args) {
         //for testing purposes.
@@ -72,29 +75,65 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
         controlsToolbar.add(logoutButton);
 
         tableHeaders = new String[]{"UID", "ID", "Subject", "Sender", "Date", "Read"};
-        DefaultTableModel model = new DefaultTableModel( tableHeaders, 0 ){
+        model = new DefaultTableModel( tableHeaders, 0 ){
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
+            }
+
+            @Override
+            public Class getColumnClass(int column) {
+                switch (column) {
+                    case 0:
+                        return String.class;
+                    case 1:
+                        return Integer.class;
+                    default:
+                        return String.class;
+                }
             }
         };
 
         emailsTable = new JTable(model);
         JScrollPane emailTableContainer = new JScrollPane(emailsTable);
+        emailsTable.setFont(tableFont);
+        emailsTable.setRowHeight(30);
+        emailsTable.setAutoCreateRowSorter(true);
         emailsTable.addMouseListener(this);
+
+        TableColumnModel columnModel = emailsTable.getColumnModel();
+        columnModel.getColumn(0).setPreferredWidth(70);
+        columnModel.getColumn(0).setMaxWidth(70);
+        columnModel.getColumn(1).setPreferredWidth(70);
+        columnModel.getColumn(1).setMaxWidth(70);
+        columnModel.getColumn(2).setMinWidth(350);
+        columnModel.getColumn(3).setMinWidth(200);
+        columnModel.getColumn(5).setPreferredWidth(70);
+        columnModel.getColumn(5).setMaxWidth(70);
 
         this.add(controlsToolbar, BorderLayout.NORTH);
         this.add(emailTableContainer, BorderLayout.CENTER);
 
+        this.setMinimumSize(new Dimension(750, 750));
         this.pack();                       //Resizes the frame automatically.
         this.setLocationRelativeTo(null);  //Sets the initial position of the frame as the center of the screen.
         this.setVisible(true);
 
+        syncMails();
+
+        this.pack();
+
+    }
+
+    private void syncMails() {
+        model.getDataVector().removeAllElements();
+        model.fireTableDataChanged();
+        mailsFromDisk = new ArrayList<>();
         loadSavedMails();
 
         for (int i = mailsFromDisk.size()-1; i >= 0; i--) {
             if (mailsFromDisk.get(i) == null) continue;
-            model.addRow(new String[]{mailsFromDisk.get(i).mailUIDL, String.valueOf(mailsFromDisk.get(i).mailNr), mailsFromDisk.get(i).subject, mailsFromDisk.get(i).from, mailsFromDisk.get(i).date, String.valueOf(mailsFromDisk.get(i).read)});
+            model.addRow(new Object[]{mailsFromDisk.get(i).mailUIDL, mailsFromDisk.get(i).mailNr, mailsFromDisk.get(i).subject, mailsFromDisk.get(i).from, mailsFromDisk.get(i).date, String.valueOf(mailsFromDisk.get(i).read)});
         }
 
         TreeMap<Integer, String> mailUIDLs = mailReader.fetchMailUIDLs();
@@ -111,10 +150,9 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
                 mailToDownload = mailReader.fetchMailBody(mailToDownload);
                 saveMail(mailToDownload);                       //save, display.
                 System.out.println("Downloaded mail " + mapEntry.getKey() + ".");
-                model.addRow(new String[]{mailToDownload.mailUIDL, String.valueOf(mailToDownload.mailNr), mailToDownload.subject, mailToDownload.from, mailToDownload.date, String.valueOf(mailToDownload.read)});
+                model.addRow(new Object[]{mailToDownload.mailUIDL, mailToDownload.mailNr, mailToDownload.subject, mailToDownload.from, mailToDownload.date, String.valueOf(mailToDownload.read)});
             }
         }
-
     }
 
     private boolean searchDownloadedMails(String mailUIDL) {
@@ -127,7 +165,11 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
     }
 
     public void deleteMail(int mailID) {
-        //TODO
+
+    }
+
+    public boolean sendMail(Mail mail) {
+        return mailSender.sendMail(mail.from, new String[]{mail.to}, mail.subject, mail.mailBody);
     }
 
     private void saveMail(Mail myMail) {
@@ -202,12 +244,28 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == optionsButton) {
+            new Options(this, tableFont);
+        }
+        else if (e.getSource() == logoutButton) {
+            this.dispose();
+        }
+        else if (e.getSource() == syncMailsButton) {
+            syncMails();
+        }
+        else if (e.getSource() == newMailButton) {
+            new MailSender(this, tableFont);
+        }
+    }
 
+    public void updateTableFont(Font font) {
+        tableFont = font;
+        emailsTable.setFont(tableFont);
     }
 
     @Override
     public void mouseClicked(MouseEvent me) {
-        if (me.getClickCount() == 2) {     // to detect doble click events
+        if (me.getClickCount() == 2 && me.getSource() == emailsTable) {     // to detect doble click events
             System.out.println("mouse evetn");
             int row = emailsTable.getSelectedRow(); // select a row
             //int column = emailsTable.getSelectedColumn(); // select a column
@@ -219,7 +277,10 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
                     selectedMail = currentMail;
                 }
             }
-            new MailReader(this, selectedMail);
+            selectedMail.read = true;
+            emailsTable.setValueAt("true" ,row, 5);
+            saveMail(selectedMail);
+            new MailReader(this, selectedMail, tableFont);
         }
     }
 

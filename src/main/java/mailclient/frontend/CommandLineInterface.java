@@ -64,13 +64,20 @@ public class CommandLineInterface {
         Pop3Client myClientReader;
         SmtpClient myClientSender;
 
-        if (connectionMethod == 0) {
-            myClientReader = new Pop3WebSocketsImplementation(myServer, username, password);
-            myClientSender = new SmtpWebSocketsImplementation(myServer, username, password);
+        try {
+            if (connectionMethod == 0) {
+                myClientReader = new Pop3WebSocketsImplementation(myServer, username, password);
+                myClientSender = new SmtpWebSocketsImplementation(myServer, username, password);
+            }
+            else {
+                myClientReader = new Pop3JavaMailImplementation(myServer, username, password);
+                myClientSender = new SmtpJavaMailImplementation(myServer, username, password);
+            }
         }
-        else {
-            myClientReader = new Pop3JavaMailImplementation(myServer, username, password);
-            myClientSender = new SmtpJavaMailImplementation(myServer, username, password);
+        catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+            System.out.println("Try again.");
+            return;
         }
 
 
@@ -85,8 +92,7 @@ public class CommandLineInterface {
 
                 case 1:
                     TreeMap<Integer, String> allMails = myClientReader.fetchMailUIDLs();
-                    while (allMails.entrySet().iterator().hasNext()) {
-                        Map.Entry mapEntry = allMails.entrySet().iterator().next();
+                    for (Map.Entry mapEntry : allMails.entrySet()) {
                         System.out.println(mapEntry.getKey() + " (UID: " + mapEntry.getValue() + ")");
                     }
                     break;

@@ -33,7 +33,7 @@ public class Pop3JavaMailImplementation implements Pop3Client {
         establishConnection();
     }
 
-    private void establishConnection() {
+    private void establishConnection() throws RuntimeException {
         emailSession = Session.getInstance(mailProperties);
         try {
             emailStore = (POP3Store) emailSession.getStore("pop3s");
@@ -41,9 +41,9 @@ public class Pop3JavaMailImplementation implements Pop3Client {
             emailFolder = (POP3Folder) emailStore.getFolder("INBOX");  //Only possible folder for the POP3 Protocol.
             emailFolder.open(Folder.READ_ONLY);
         } catch (AuthenticationFailedException e) {
-            System.out.println("Invalid username/password.");
+            throw new RuntimeException("Invalid username/password.");
         } catch (NoSuchProviderException | MailConnectException e) {
-            System.out.println("Couldn't connect to host: " + e);
+            throw new RuntimeException("Couldn't connect to host: " + e);
         } catch (MessagingException e) {
             throw new RuntimeException(e);
         }
@@ -87,24 +87,28 @@ public class Pop3JavaMailImplementation implements Pop3Client {
 
             if (message.getFrom() != null) {
                 for (Address addr : message.getFrom()) {
+                    if (addr == null) continue;
                     mail.from += addr.toString() + ", ";
                 }
             }
 
             if (message.getRecipients(Message.RecipientType.TO) != null) {
                 for (Address addr : message.getRecipients(Message.RecipientType.TO)) {
+                    if (addr == null) continue;
                     mail.to += addr.toString() + ", ";
                 }
             }
 
             if (message.getRecipients(Message.RecipientType.CC) != null) {
                 for (Address addr : message.getRecipients(Message.RecipientType.CC)) {
+                    if (addr == null) continue;
                     mail.cc += addr.toString() + ", ";
                 }
             }
 
             if (message.getRecipients(Message.RecipientType.BCC) != null) {
                 for (Address addr : message.getRecipients(Message.RecipientType.BCC)) {
+                    if (addr == null) continue;
                     mail.bcc += addr.toString() + ", ";
                 }
             }

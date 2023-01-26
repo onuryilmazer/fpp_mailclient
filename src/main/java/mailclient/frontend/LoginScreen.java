@@ -256,21 +256,31 @@ public class LoginScreen extends JFrame implements ActionListener {
 
                 System.out.println(username.getText() + " " + String.valueOf(password.getPassword()));
 
-                if (connectionMethodCombobox.getSelectedIndex() == 0) {
-                    myClientReader = new Pop3WebSocketsImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
-                    myClientSender = new SmtpWebSocketsImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
-                }
-                else {
-                    myClientReader = new Pop3JavaMailImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
-                    myClientSender = new SmtpJavaMailImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
+                try {
+                    if (connectionMethodCombobox.getSelectedIndex() == 0) {
+                        myClientReader = new Pop3WebSocketsImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
+                        myClientSender = new SmtpWebSocketsImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
+                    }
+                    else {
+                        myClientReader = new Pop3JavaMailImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
+                        myClientSender = new SmtpJavaMailImplementation(myServer, username.getText(), String.valueOf(password.getPassword()));
+                    }
+
+                    if (myClientReader != null && myClientSender != null) {
+                        MainWindow main = new MainWindow(myClientReader, myClientSender);
+                        this.dispose();
+                    }
+                    else {
+                        JOptionPane.showMessageDialog(this, "Try again.", "Invalid inputs.", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception exception) {
+                    JOptionPane.showMessageDialog(this, exception.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 }
 
-                MainWindow main = new MainWindow(myClientReader, myClientSender);
-                this.dispose();
 
             }
             else {
-                //Error messages are shown by the method areInputsValid(). No need to do anything here.
+                //Input validation error messages are shown by the method areInputsValid(). No need to do anything here.
                 //JOptionPane.showMessageDialog(this, "Please make sure that your inputs are valid.", "Invalid inputs.", JOptionPane.ERROR_MESSAGE);
             }
         }
