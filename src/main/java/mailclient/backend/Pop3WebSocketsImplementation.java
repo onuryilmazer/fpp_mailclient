@@ -108,30 +108,35 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
 
         String base64DecodedMessage = mailRequest.decodeBase64Parts();
 
+        mail.to="";
         int toIndex = base64DecodedMessage.indexOf("To: ");
         int toEndIndex = base64DecodedMessage.indexOf(CRLF, toIndex);
         if (toIndex != -1 && toEndIndex != -1 && toIndex < toEndIndex) {
             mail.to = base64DecodedMessage.substring(toIndex+4, toEndIndex);
         }
-    
+
+        mail.subject="";
         int subjectIndex = base64DecodedMessage.indexOf("Subject: ");
         int subjectEndIndex = base64DecodedMessage.indexOf(CRLF, subjectIndex);
         if (subjectIndex != -1 && subjectEndIndex != -1 && subjectIndex < subjectEndIndex) {
             mail.subject = base64DecodedMessage.substring(subjectIndex + 9, subjectEndIndex);
         }
 
+        mail.date="";
         int dateIndex = base64DecodedMessage.indexOf("Date: ");
         int dateEndIndex = base64DecodedMessage.indexOf(CRLF, dateIndex);
         if (dateIndex != -1 && dateEndIndex != -1 && dateIndex < dateEndIndex) {
             mail.date = base64DecodedMessage.substring(dateIndex+6,dateEndIndex);
         }
 
+        mail.from="";
         int fromIndex = base64DecodedMessage.indexOf("From: ");
         int fromEndIndex = base64DecodedMessage.indexOf(CRLF, fromIndex);
         if (fromIndex != -1 && fromEndIndex != -1 && fromIndex < fromEndIndex) {
             mail.from = base64DecodedMessage.substring(fromIndex + 6, fromEndIndex);
         }
 
+        mail.replyTo="";
         int replyToIndex = base64DecodedMessage.indexOf("Reply-To: ");
         int replyToEndIndex = base64DecodedMessage.indexOf(CRLF, replyToIndex);
         if (replyToIndex != -1 && replyToEndIndex != -1 && replyToIndex < replyToEndIndex) {
@@ -224,6 +229,7 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
             System.out.println("Trying to reconnect. Attempt nr. " + i);
             establishConnection();
             if (connectionIsReadyToUse()) {
+                System.out.println("Reconnected.");
                 break;
             }
         }

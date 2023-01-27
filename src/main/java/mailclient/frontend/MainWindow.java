@@ -3,6 +3,7 @@ package mailclient.frontend;
 import com.sun.source.tree.Tree;
 import com.sun.tools.javac.Main;
 import mailclient.backend.Mail;
+import mailclient.backend.MailServer;
 import mailclient.backend.Pop3Client;
 import mailclient.backend.SmtpClient;
 
@@ -99,22 +100,24 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
         emailsTable.setFont(tableFont);
         emailsTable.setRowHeight(30);
         emailsTable.setAutoCreateRowSorter(true);
+        emailsTable.getRowSorter().toggleSortOrder(1);
+        emailsTable.getRowSorter().toggleSortOrder(1); //we call it twice so it sorts descending
         emailsTable.addMouseListener(this);
 
         TableColumnModel columnModel = emailsTable.getColumnModel();
-        columnModel.getColumn(0).setPreferredWidth(70);
+        columnModel.getColumn(0).setMinWidth(70);
         columnModel.getColumn(0).setMaxWidth(70);
-        columnModel.getColumn(1).setPreferredWidth(70);
+        columnModel.getColumn(1).setMinWidth(70);
         columnModel.getColumn(1).setMaxWidth(70);
         columnModel.getColumn(2).setMinWidth(350);
         columnModel.getColumn(3).setMinWidth(200);
-        columnModel.getColumn(5).setPreferredWidth(70);
+        columnModel.getColumn(5).setMinWidth(70);
         columnModel.getColumn(5).setMaxWidth(70);
 
         this.add(controlsToolbar, BorderLayout.NORTH);
         this.add(emailTableContainer, BorderLayout.CENTER);
 
-        this.setMinimumSize(new Dimension(750, 750));
+        this.setMinimumSize(new Dimension(800, 750));
         this.pack();                       //Resizes the frame automatically.
         this.setLocationRelativeTo(null);  //Sets the initial position of the frame as the center of the screen.
         this.setVisible(true);
@@ -136,6 +139,8 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
             model.addRow(new Object[]{mailsFromDisk.get(i).mailUIDL, mailsFromDisk.get(i).mailNr, mailsFromDisk.get(i).subject, mailsFromDisk.get(i).from, mailsFromDisk.get(i).date, String.valueOf(mailsFromDisk.get(i).read)});
         }
 
+        int numberOfNewMails = 0;
+
         TreeMap<Integer, String> mailUIDLs = mailReader.fetchMailUIDLs();
         for (Map.Entry<Integer, String> mapEntry : mailUIDLs.entrySet()) {
             if (searchDownloadedMails(mapEntry.getValue())) {
@@ -143,15 +148,24 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
                 continue;
             }
             else {
+                numberOfNewMails++;
                 Mail mailToDownload = new Mail();
                 mailToDownload.mailUIDL = mapEntry.getValue();
                 mailToDownload.mailNr = mapEntry.getKey();
                 mailToDownload = mailReader.fetchMailEnvelope(mailToDownload);  //download
                 mailToDownload = mailReader.fetchMailBody(mailToDownload);
                 saveMail(mailToDownload);                       //save, display.
+                mailsFromDisk.add(mailToDownload);
                 System.out.println("Downloaded mail " + mapEntry.getKey() + ".");
                 model.addRow(new Object[]{mailToDownload.mailUIDL, mailToDownload.mailNr, mailToDownload.subject, mailToDownload.from, mailToDownload.date, String.valueOf(mailToDownload.read)});
             }
+        }
+
+        if (numberOfNewMails == 0) {
+            JOptionPane.showMessageDialog(this, "You have no new mails", "Mailbox up-to-date!", JOptionPane.INFORMATION_MESSAGE);
+        }
+        else {
+            JOptionPane.showMessageDialog(this, "Downloaded " + numberOfNewMails + " new mails from the server.", "Mailbox updated!", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -251,6 +265,12 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
             this.dispose();
         }
         else if (e.getSource() == syncMailsButton) {
+            try {
+                mailReader.closeConnection();
+                mailReader.reconnect(1);
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this, "Can't reconnect.");
+            }
             syncMails();
         }
         else if (e.getSource() == newMailButton) {
