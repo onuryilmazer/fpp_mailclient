@@ -133,13 +133,15 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
         columnModel.getColumn(1).setMaxWidth(70);
         columnModel.getColumn(2).setMinWidth(350);
         columnModel.getColumn(3).setMinWidth(200);
+        columnModel.getColumn(4).setMinWidth(160);
+        columnModel.getColumn(4).setMaxWidth(160);
         columnModel.getColumn(5).setMinWidth(70);
         columnModel.getColumn(5).setMaxWidth(70);
 
         this.add(controlsToolbar, BorderLayout.NORTH);
         this.add(emailTableContainer, BorderLayout.CENTER);
 
-        this.setMinimumSize(new Dimension(900, 750));
+        this.setMinimumSize(new Dimension(1000, 750));
         //this.pack();                       //Resizes the frame automatically.
         this.setLocationRelativeTo(null);  //Sets the initial position of the frame as the center of the screen.
         this.setVisible(true);
