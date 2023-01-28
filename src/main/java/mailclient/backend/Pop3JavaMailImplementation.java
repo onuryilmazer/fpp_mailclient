@@ -11,7 +11,9 @@ import com.sun.mail.pop3.POP3Store;
 import com.sun.mail.util.MailConnectException;
 
 import javax.mail.*;
+import javax.mail.internet.MimeUtility;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.Properties;
 import java.util.TreeMap;
 
@@ -39,7 +41,7 @@ public class Pop3JavaMailImplementation implements Pop3Client {
             emailStore = (POP3Store) emailSession.getStore("pop3s");
             emailStore.connect(mailProperties.getProperty("mail.pop3.host"), mailProperties.getProperty("username"), mailProperties.getProperty("password"));
             emailFolder = (POP3Folder) emailStore.getFolder("INBOX");  //Only possible folder for the POP3 Protocol.
-            emailFolder.open(Folder.READ_ONLY);
+            emailFolder.open(Folder.READ_WRITE);
         } catch (AuthenticationFailedException e) {
             throw new RuntimeException("Invalid username/password.");
         } catch (NoSuchProviderException | MailConnectException e) {
@@ -86,30 +88,34 @@ public class Pop3JavaMailImplementation implements Pop3Client {
             Message message = emailFolder.getMessage(mail.mailNr);
 
             if (message.getFrom() != null) {
-                for (Address addr : message.getFrom()) {
+                for (int i = 0; i < message.getFrom().length; i++) {
+                    Address addr = message.getFrom()[i];
                     if (addr == null) continue;
-                    mail.from += addr.toString() + ", ";
+                    mail.from += addr.toString() + (i == message.getFrom().length-1 ? "" : ", ");
                 }
             }
 
             if (message.getRecipients(Message.RecipientType.TO) != null) {
-                for (Address addr : message.getRecipients(Message.RecipientType.TO)) {
+                for (int i = 0; i < message.getRecipients(Message.RecipientType.TO).length; i++) {
+                    Address addr = message.getRecipients(Message.RecipientType.TO)[i];
                     if (addr == null) continue;
-                    mail.to += addr.toString() + ", ";
+                    mail.to += addr.toString() + (i == message.getRecipients(Message.RecipientType.TO).length-1 ? "" : ", ");
                 }
             }
 
             if (message.getRecipients(Message.RecipientType.CC) != null) {
-                for (Address addr : message.getRecipients(Message.RecipientType.CC)) {
+                for (int i = 0; i < message.getRecipients(Message.RecipientType.CC).length; i++) {
+                    Address addr = message.getRecipients(Message.RecipientType.CC)[i];
                     if (addr == null) continue;
-                    mail.cc += addr.toString() + ", ";
+                    mail.cc += addr.toString() + (i == message.getRecipients(Message.RecipientType.CC).length-1 ? "" : ", ");
                 }
             }
 
             if (message.getRecipients(Message.RecipientType.BCC) != null) {
-                for (Address addr : message.getRecipients(Message.RecipientType.BCC)) {
+                for (int i = 0; i < message.getRecipients(Message.RecipientType.BCC).length; i++) {
+                    Address addr = message.getRecipients(Message.RecipientType.BCC)[i];
                     if (addr == null) continue;
-                    mail.bcc += addr.toString() + ", ";
+                    mail.bcc += addr.toString() + (i == message.getRecipients(Message.RecipientType.BCC).length-1 ? "" : ", ");
                 }
             }
 
@@ -129,6 +135,18 @@ public class Pop3JavaMailImplementation implements Pop3Client {
         }
         catch (MessagingException e) {
             System.out.println("Error: Mail could not be processed. There might be formatting issues with it: " + e.getMessage());
+        }
+
+        try {
+            mail.from = MimeUtility.decodeText(mail.from);
+            mail.to = MimeUtility.decodeText(mail.to);
+            mail.cc = MimeUtility.decodeText(mail.cc);
+            mail.bcc = MimeUtility.decodeText(mail.bcc);
+            mail.replyTo = MimeUtility.decodeText(mail.replyTo);
+            mail.date = MimeUtility.decodeText(mail.date);
+            mail.subject = MimeUtility.decodeText(mail.subject);
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
         }
 
         return mail;
@@ -154,7 +172,7 @@ public class Pop3JavaMailImplementation implements Pop3Client {
 
     public void closeConnection() {
         try {
-            emailFolder.close();
+            emailFolder.close(true);
             emailStore.close();
         } catch (MessagingException e) {
             throw new RuntimeException(e);
@@ -181,6 +199,17 @@ public class Pop3JavaMailImplementation implements Pop3Client {
             System.out.println("Trying to reconnect. Attempt nr. " + i);
             establishConnection();
         }
+    }
+
+    @Override
+    public void markMailForDeletionFromServer(int mailID) {
+        try {
+            emailFolder.getMessage(mailID).setFlag(Flags.Flag.DELETED, true);
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Error deleting the mail: " + e.getMessage());
+        }
+
     }
 
     private String getMailContent(Part mailpart) throws MessagingException, IOException {   //Message implements Part

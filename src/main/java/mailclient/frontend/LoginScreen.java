@@ -267,7 +267,7 @@ public class LoginScreen extends JFrame implements ActionListener {
                     }
 
                     if (myClientReader != null && myClientSender != null) {
-                        MainWindow main = new MainWindow(myClientReader, myClientSender);
+                        MainWindow main = new MainWindow(myClientReader, myClientSender, username.getText());
                         this.dispose();
                     }
                     else {

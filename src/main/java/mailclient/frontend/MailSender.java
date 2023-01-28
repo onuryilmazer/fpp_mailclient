@@ -102,6 +102,8 @@ public class MailSender extends JFrame implements ActionListener {
 
         mailTextArea = new JTextArea(mailBody);
         mailTextArea.setFont(font);
+        mailTextArea.setLineWrap(true);
+        mailTextArea.setWrapStyleWord(true);
         JScrollPane mailScrollPane = new JScrollPane(mailTextArea);
         mailScrollPane.setPreferredSize(new Dimension(Short.MAX_VALUE, Short.MAX_VALUE));
 

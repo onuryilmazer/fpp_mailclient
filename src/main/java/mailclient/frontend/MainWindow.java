@@ -8,7 +8,9 @@ import mailclient.backend.Pop3Client;
 import mailclient.backend.SmtpClient;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumnModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -31,13 +33,15 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
     private String mailRootFolder = "applicationData/savedMails/";
     private ArrayList<Mail> mailsFromDisk = new ArrayList<>();
     private Font tableFont = new Font("Serif", Font.PLAIN, 20);
+    private int mailsToDelete = 0;
 
     public static void main(String[] args) {
         //for testing purposes.
-        new MainWindow(null, null);
+        new MainWindow(null, null, null);
     }
 
-    MainWindow(Pop3Client mailReader, SmtpClient mailSender) {
+    MainWindow(Pop3Client mailReader, SmtpClient mailSender, String username) {
+        mailRootFolder += username + "/";
         this.mailReader = mailReader;
         this.mailSender = mailSender;
 
@@ -95,18 +99,36 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
             }
         };
 
-        emailsTable = new JTable(model);
+        emailsTable = new JTable(model) {
+            @Override
+            public Component prepareRenderer(TableCellRenderer renderer, int row, int col) {
+                Component c = super.prepareRenderer(renderer, row, col);
+                String status = (String)getValueAt(row, 5);
+                if ("true".equals(status)) {
+                    c.setBackground(Color.LIGHT_GRAY);
+                    c.setForeground(Color.BLACK);
+                } else {
+                    c.setBackground(super.getBackground());
+                    c.setForeground(super.getForeground());
+                }
+                return c;
+            }
+        };
+
         JScrollPane emailTableContainer = new JScrollPane(emailsTable);
         emailsTable.setFont(tableFont);
+        emailsTable.setFocusable(false);
         emailsTable.setRowHeight(30);
         emailsTable.setAutoCreateRowSorter(true);
         emailsTable.getRowSorter().toggleSortOrder(1);
         emailsTable.getRowSorter().toggleSortOrder(1); //we call it twice so it sorts descending
         emailsTable.addMouseListener(this);
 
+
+
         TableColumnModel columnModel = emailsTable.getColumnModel();
-        columnModel.getColumn(0).setMinWidth(70);
-        columnModel.getColumn(0).setMaxWidth(70);
+        columnModel.getColumn(0).setMinWidth(150);
+        columnModel.getColumn(0).setMaxWidth(150);
         columnModel.getColumn(1).setMinWidth(70);
         columnModel.getColumn(1).setMaxWidth(70);
         columnModel.getColumn(2).setMinWidth(350);
@@ -117,8 +139,8 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
         this.add(controlsToolbar, BorderLayout.NORTH);
         this.add(emailTableContainer, BorderLayout.CENTER);
 
-        this.setMinimumSize(new Dimension(800, 750));
-        this.pack();                       //Resizes the frame automatically.
+        this.setMinimumSize(new Dimension(900, 750));
+        //this.pack();                       //Resizes the frame automatically.
         this.setLocationRelativeTo(null);  //Sets the initial position of the frame as the center of the screen.
         this.setVisible(true);
 
@@ -178,8 +200,15 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
         return false;
     }
 
-    public void deleteMail(int mailID) {
+    public void deleteMail(int mailID, String mailUIDL) {
+        mailReader.markMailForDeletionFromServer(mailID);
 
+        File mailFile = new File(mailRootFolder + mailUIDL + ".ser");
+        if (!mailFile.delete()) {
+            JOptionPane.showMessageDialog(this, "Error: Couldn't delete mail from disk.");
+        }
+
+        mailsToDelete++;
     }
 
     public boolean sendMail(Mail mail) {
@@ -268,6 +297,9 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
             try {
                 mailReader.closeConnection();
                 mailReader.reconnect(1);
+                if (mailsToDelete > 0 ) {
+                    JOptionPane.showMessageDialog(this, mailsToDelete + " mails were deleted from the server.", "Mails deleted", JOptionPane.INFORMATION_MESSAGE);
+                }
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(this, "Can't reconnect.");
             }
@@ -299,6 +331,7 @@ public class MainWindow extends JFrame implements ActionListener, MouseListener 
             }
             selectedMail.read = true;
             emailsTable.setValueAt("true" ,row, 5);
+            emailsTable.repaint();
             saveMail(selectedMail);
             new MailReader(this, selectedMail, tableFont);
         }

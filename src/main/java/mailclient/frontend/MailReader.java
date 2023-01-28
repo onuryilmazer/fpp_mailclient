@@ -15,7 +15,7 @@ public class MailReader extends JFrame implements ActionListener {
     private JTextArea mailTextArea;
     private ImageIcon deleteIcon, backIcon, titleIcon;
     private MainWindow parentFrame;
-    private String sender, receiver, cc, bcc, subject, mailBody;
+    private String sender, receiver, cc, bcc, subject, mailBody, mailUIDL;
     private int mailID;
     private Font font;
 
@@ -29,6 +29,7 @@ public class MailReader extends JFrame implements ActionListener {
     MailReader(MainWindow parentFrame, Mail myMail, Font font) {
         this.parentFrame = parentFrame;
         this.mailID = myMail.mailNr;
+        this.mailUIDL = myMail.mailUIDL;
         this.sender = myMail.from;
         this.receiver = myMail.to;
         this.cc = myMail.to;
@@ -48,7 +49,6 @@ public class MailReader extends JFrame implements ActionListener {
         deleteIcon = new ImageIcon(getClass().getResource("/icons/wastebasket.png"));
         deleteButton.setIcon(deleteIcon);
         deleteButton.addActionListener(this);
-        deleteButton.setEnabled(false);
         buttonsToolbar.add(deleteButton);
 
         closeButton = new JButton();
@@ -113,6 +113,8 @@ public class MailReader extends JFrame implements ActionListener {
 
         mailTextArea = new JTextArea(mailBody);
         mailTextArea.setFont(font);
+        mailTextArea.setLineWrap(true);
+        mailTextArea.setWrapStyleWord(true);
         JScrollPane mailScrollPane = new JScrollPane(mailTextArea);
         mailScrollPane.setPreferredSize(new Dimension(Short.MAX_VALUE, Short.MAX_VALUE));
 
@@ -131,7 +133,8 @@ public class MailReader extends JFrame implements ActionListener {
             this.dispose();
         }
         else if (e.getSource() == deleteButton) {
-            parentFrame.deleteMail(mailID);
+            parentFrame.deleteMail(mailID, mailUIDL);
+            JOptionPane.showMessageDialog(this, "Mail is marked for deletion. It will be deleted when you sync your inbox.");
             this.dispose();
         }
     }

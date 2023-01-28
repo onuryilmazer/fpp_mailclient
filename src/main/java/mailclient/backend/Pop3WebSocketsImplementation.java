@@ -9,6 +9,7 @@ package mailclient.backend;
 
 import com.sun.source.tree.Tree;
 
+import javax.mail.internet.MimeUtility;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import java.io.*;
@@ -150,6 +151,19 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
 
         mail.envelopeDownloaded = true;
 
+        //DECODES Mime encoded words.
+        try {
+            mail.from = MimeUtility.decodeText(mail.from);
+            mail.to = MimeUtility.decodeText(mail.to);
+            mail.cc = MimeUtility.decodeText(mail.cc);
+            mail.bcc = MimeUtility.decodeText(mail.bcc);
+            mail.replyTo = MimeUtility.decodeText(mail.replyTo);
+            mail.date = MimeUtility.decodeText(mail.date);
+            mail.subject = MimeUtility.decodeText(mail.subject);
+        } catch (UnsupportedEncodingException e) {
+            System.out.println("Can't decode.");
+        }
+
         return mail;
     }
 
@@ -185,6 +199,7 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
 
         mail.mailBody = base64DecodedMessage.substring(mailBodyIndex, mailBodyEndIndex);
         mail.bodyDownloaded = true;
+
         return mail;
     }
 
@@ -235,7 +250,10 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
         }
     }
 
-
+    @Override
+    public void markMailForDeletionFromServer(int mailID) {
+        dele(mailID);
+    }
 
     private ServerResponse stat() {
         writeToSocket("STAT");
@@ -276,6 +294,11 @@ public class Pop3WebSocketsImplementation implements Pop3Client {
         catch (IOException e) {
             //TODO throw error.
         }
+    }
+
+    private void dele(int nr) {
+        writeToSocket("DELE " + nr);
+        readSocket(false);
     }
 
     private ServerResponse readSocket(boolean multiline) {

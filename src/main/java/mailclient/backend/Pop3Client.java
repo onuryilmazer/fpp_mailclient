@@ -19,5 +19,7 @@ public interface Pop3Client {
 
     boolean connectionIsReadyToUse();
 
+    void markMailForDeletionFromServer(int mailID);
+
     void reconnect(int retryCount) throws IOException;
 }
